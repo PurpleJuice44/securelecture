@@ -27,7 +27,18 @@ sort -t' ' -k1,2 incident.raw > timeline.txt
 # 보고서 타임라인 표로 옮기기 (시각 | 출처 | 행위 | 근거)
 # 09:12 auth.log  무차별대입 시작 (Failed 120회)
 # 09:31 access.log /uploads/x.php 200 (웹셸 업로드)
-# 09:33 pcap      192.0.2.10:443 비콘 시작</pre><h4 class="mt-4">4. 실습</h4><ol><li>L4~L6에서 다룬 로그·pcap 행을 모아 10줄 타임라인을 만든다.</li><li>IOC 4종(해시·IP·도메인·URL)을 표로 정리하고 출처를 명시한다.</li><li>경영진용 요약 5줄(피해·원인·조치·영향·다음 단계)을 쓴다.</li><li>단기(격리·차단·비밀번호 초기화)와 중장기(EDR·로깅·훈련) 대책을 나눠 적는다.</li><li>CoC 발췌를 부록에 붙여 증거 추적 가능성을 보인다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>타임라인이 중요한 이유는?</li><li>IOC 예시 3가지는?</li><li>요약과 본문의 독자가 다른 이유는? 각각 누구인가?</li><li>재발방지를 단기·중장기로 나누는 이유는?</li><li>보고서에 원본 개인정보(GPS·실명)를 그대로 싣지 않는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>인과관계(정찰→침투→확산)를 증명하는 뼈대이며 대응·대책의 근거가 되기 때문이다.</li><li>악성 해시, C2 IP·도메인, 웹셸 URL 등이다.</li><li>요약은 판단하는 경영진용, 본문·부록은 재현하는 실무자용이기 때문이다.</li><li>당장 막을 것과 구조적으로 고칠 것의 책임·일정이 다르기 때문이다.</li><li>2차 피해와 법적 문제를 막기 위해 마스킹이 원칙이기 때문이다.</li></ol></details><h4 class="mt-4">6. 흔한 실수</h4><ul><li>타임라인 없이 IOC만 나열해 공격 이야기가 빠진 보고서</li><li>근거 없는 확정 표현("확실하다") 대신 신뢰도(확정·추정)를 구분하지 않는 경우</li></ul><div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="forensics-l09-01.html">← 포렌식 CTF 실전</a><a class="btn btn-outline-secondary" href="field-forensics.html">분야 목차 →</a></div></main>
+# 09:33 pcap      192.0.2.10:443 비콘 시작</pre><h4 class="mt-4">4. 실습</h4><ol><li>L4~L6에서 다룬 로그·pcap 행을 모아 10줄 타임라인을 만든다.</li><li>IOC 4종(해시·IP·도메인·URL)을 표로 정리하고 출처를 명시한다.</li><li>경영진용 요약 5줄(피해·원인·조치·영향·다음 단계)을 쓴다.</li><li>단기(격리·차단·비밀번호 초기화)와 중장기(EDR·로깅·훈련) 대책을 나눠 적는다.</li><li>CoC 발췌를 부록에 붙여 증거 추적 가능성을 보인다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>타임라인이 중요한 이유는?</li><li>IOC 예시 3가지는?</li><li>요약과 본문의 독자가 다른 이유는? 각각 누구인가?</li><li>재발방지를 단기·중장기로 나누는 이유는?</li><li>보고서에 원본 개인정보(GPS·실명)를 그대로 싣지 않는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>인과관계(정찰→침투→확산)를 증명하는 뼈대이며 대응·대책의 근거가 되기 때문이다.</li><li>악성 해시, C2 IP·도메인, 웹셸 URL 등이다.</li><li>요약은 판단하는 경영진용, 본문·부록은 재현하는 실무자용이기 때문이다.</li><li>당장 막을 것과 구조적으로 고칠 것의 책임·일정이 다르기 때문이다.</li><li>2차 피해와 법적 문제를 막기 위해 마스킹이 원칙이기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 보고·검토 흐름</h4><div class="mermaid">sequenceDiagram
+  participant W as 작성자
+  participant T as 타임라인·IOC
+  participant R as 검토자
+  participant A as 승인자
+  W->>T: 로그·pcap 병합
+  T-->>W: 인과관계 확정
+  W->>R: 초안 제출
+  R-->>W: 근거·수치 보완 요청
+  W->>A: 최종 보고
+  A-->>W: 대응 승인</div><p class="text-muted small">읽는 법: 보고서는 한 번에 완성되지 않습니다. 검토 단계에서 근거가 흔들리면 타임라인으로 되돌아가 보강합니다.</p>
+<h4 class="mt-4">6. 흔한 실수</h4><ul><li>타임라인 없이 IOC만 나열해 공격 이야기가 빠진 보고서</li><li>근거 없는 확정 표현("확실하다") 대신 신뢰도(확정·추정)를 구분하지 않는 경우</li></ul><div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="forensics-l09-01.html">← 포렌식 CTF 실전</a><a class="btn btn-outline-secondary" href="field-forensics.html">분야 목차 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><button id="toTop" class="btn btn-dark rounded-circle" title="맨 위로">↑</button><script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:"base",securityLevel:"loose"});var t=document.getElementById("toTop");window.addEventListener("scroll",function(){t.style.display=window.scrollY>400?"block":"none"});t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});</script></body></html>

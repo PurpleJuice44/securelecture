@@ -31,7 +31,18 @@ zsteg -a secret.png 2>/dev/null | head -30
 # 3) steghide (패스워드 필요 시 rockyou 사전 활용)
 steghide extract -sf secret.jpg -p ""
 # 4) 최후 수단: 문자열 긁기
-strings -n 8 secret.png | grep -i -E "flag|ctf|http" | head</pre><h4 class="mt-4">4. 실습</h4><ol><li><code>binwalk</code>로 덧붙은 zip이 있는지 확인하고 추출한다.</li><li><code>zsteg -a</code>로 LSB 평면을 검사해 숨은 문자열을 찾는다.</li><li>푸터 이후 바이트를 <code>xxd tail</code>로 직접 확인한다.</li><li>steghide 추출 시 빈 패스워드→사전 순으로 시도한다.</li><li>발견 경로(도구·근거·추출물)를 순서대로 기록한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>LSB 삽입이란?</li><li>binwalk의 용도는?</li><li>덧붙이기와 LSB 삽입 중 탐지가 쉬운 쪽은? 이유는?</li><li>steghide 추출에 패스워드가 필요할 때 시도 순서는?</li><li>이미지 크기가 같은데 용량이 비정상적으로 크면 무엇을 의심하는가?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>픽셀 값의 최하위 비트를 바꿔 육안 변화를 최소화하며 데이터를 심는 기법이다.</li><li>파일 속 덧붙은 파일·펌웨어 등 숨은 구조를 찾아 추출하는 것이다.</li><li>덧붙이기이다. 푸터 이후 바이트가 그대로 보이므로 binwalk 한 번이면 드러나기 때문이다.</li><li>빈 문자열→문제 지문 단서→rockyou 등 사전 순으로 시도한다.</li><li>덧붙은 데이터나 고밀도 LSB 페이로드를 의심하고 binwalk·zsteg로 확인한다.</li></ol></details><h4 class="mt-4">6. 흔한 실수</h4><ul><li>JPEG에 zsteg를 돌리고 PNG에 steghide만 시도하는 등 형식-도구 매칭을 틀리는 경우</li><li>추출된 zip에 또 이미지가 들어 있는 다중 은닉을 1단계에서 멈추는 경우</li></ul>
+strings -n 8 secret.png | grep -i -E "flag|ctf|http" | head</pre><h4 class="mt-4">4. 실습</h4><ol><li><code>binwalk</code>로 덧붙은 zip이 있는지 확인하고 추출한다.</li><li><code>zsteg -a</code>로 LSB 평면을 검사해 숨은 문자열을 찾는다.</li><li>푸터 이후 바이트를 <code>xxd tail</code>로 직접 확인한다.</li><li>steghide 추출 시 빈 패스워드→사전 순으로 시도한다.</li><li>발견 경로(도구·근거·추출물)를 순서대로 기록한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>LSB 삽입이란?</li><li>binwalk의 용도는?</li><li>덧붙이기와 LSB 삽입 중 탐지가 쉬운 쪽은? 이유는?</li><li>steghide 추출에 패스워드가 필요할 때 시도 순서는?</li><li>이미지 크기가 같은데 용량이 비정상적으로 크면 무엇을 의심하는가?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>픽셀 값의 최하위 비트를 바꿔 육안 변화를 최소화하며 데이터를 심는 기법이다.</li><li>파일 속 덧붙은 파일·펌웨어 등 숨은 구조를 찾아 추출하는 것이다.</li><li>덧붙이기이다. 푸터 이후 바이트가 그대로 보이므로 binwalk 한 번이면 드러나기 때문이다.</li><li>빈 문자열→문제 지문 단서→rockyou 등 사전 순으로 시도한다.</li><li>덧붙은 데이터나 고밀도 LSB 페이로드를 의심하고 binwalk·zsteg로 확인한다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 은닉 탐지 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant B as binwalk
+  participant Z as zsteg
+  participant S as steghide
+  A->>B: 덧붙은 파일 스캔
+  B-->>A: 추출물 또는 없음
+  A->>Z: LSB 평면 검사
+  Z-->>A: 숨은 문자열 후보
+  A->>S: 암호 추출 시도
+  S-->>A: 페이로드 확정</div><p class="text-muted small">읽는 법: 쉽고 흔한 덧붙이기부터 확인하고 LSB로 내려갑니다. 한 단계에서 멈추지 말고 다중 은닉까지 의심합니다.</p>
+<h4 class="mt-4">6. 흔한 실수</h4><ul><li>JPEG에 zsteg를 돌리고 PNG에 steghide만 시도하는 등 형식-도구 매칭을 틀리는 경우</li><li>추출된 zip에 또 이미지가 들어 있는 다중 은닉을 1단계에서 멈추는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="forensics-l06-01.html">← 네트워크 포렌식 (pcap)</a><a class="btn btn-primary" href="forensics-l09-01.html">포렌식 CTF 실전 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

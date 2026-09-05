@@ -29,7 +29,18 @@ awk '$9==404 {print $1}' access.log | sort | uniq -c | sort -nr | head
 # 3) SQLi 의심 요청 (URL 디코딩 후 탐지)
 grep -i -E "union(%20| )select|' or '" access.log | head
 # 4) 시간대 정렬 (공격 IP의 행위 순서 재구성)
-grep '203.0.113.7' access.log auth.log | sort -t' ' -k4</pre><h4 class="mt-4">4. 실습</h4><ol><li>Top 공격 IP 5개를 뽑고 국가·ASN을 조회해 기록한다.</li><li>해당 IP의 첫 요청~마지막 요청 시각으로 공격 지속 시간을 구한다.</li><li>404 집중 경로 10개를 뽑아 스캔 도구 지문을 추정한다.</li><li>SQLi 패턴 매칭 전 URL 디코딩(<code>python3 -c urllib</code>)이 필요한 이유를 확인한다.</li><li>정찰→침투→확대 3단계로 시나리오를 재구성해 한 페이지로 정리한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>무차별대입 탐지 지표는?</li><li>SQLi 패턴 예시는?</li><li>로그 분석 전 타임존을 통일해야 하는 이유는?</li><li>정상 크롤러와 악성 스캔을 구분하는 방법은?</li><li>웹셸 접근을 의심할 로그 패턴은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>짧은 시간 내 동일 IP의 반복 Failed password, 다수 계정 대상 시도이다.</li><li><code>' OR '1'='1</code>, <code>UNION SELECT</code> 등이다. 인코딩 우회까지 고려한다.</li><li>서버마다 기록 기준이 달라 정렬이 어긋나면 인과관계가 뒤집히기 때문이다.</li><li>User-Agent·요청 간격·robots.txt 준수 여부와 404 비율을 함께 본다.</li><li>낯선 경로 php 파일에 대한 200 응답과 POST 반복, 업로드 시점과의 연계이다.</li></ol></details><h4 class="mt-4">6. 흔한 실수</h4><ul><li>인코딩된 페이로드를 디코딩 없이 grep해 탐지를 놓치는 경우</li><li>로그 순환(logrotate)으로 잘린 구간의 공백을 공격 종료로 오판하는 경우</li></ul>
+grep '203.0.113.7' access.log auth.log | sort -t' ' -k4</pre><h4 class="mt-4">4. 실습</h4><ol><li>Top 공격 IP 5개를 뽑고 국가·ASN을 조회해 기록한다.</li><li>해당 IP의 첫 요청~마지막 요청 시각으로 공격 지속 시간을 구한다.</li><li>404 집중 경로 10개를 뽑아 스캔 도구 지문을 추정한다.</li><li>SQLi 패턴 매칭 전 URL 디코딩(<code>python3 -c urllib</code>)이 필요한 이유를 확인한다.</li><li>정찰→침투→확대 3단계로 시나리오를 재구성해 한 페이지로 정리한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>무차별대입 탐지 지표는?</li><li>SQLi 패턴 예시는?</li><li>로그 분석 전 타임존을 통일해야 하는 이유는?</li><li>정상 크롤러와 악성 스캔을 구분하는 방법은?</li><li>웹셸 접근을 의심할 로그 패턴은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>짧은 시간 내 동일 IP의 반복 Failed password, 다수 계정 대상 시도이다.</li><li><code>' OR '1'='1</code>, <code>UNION SELECT</code> 등이다. 인코딩 우회까지 고려한다.</li><li>서버마다 기록 기준이 달라 정렬이 어긋나면 인과관계가 뒤집히기 때문이다.</li><li>User-Agent·요청 간격·robots.txt 준수 여부와 404 비율을 함께 본다.</li><li>낯선 경로 php 파일에 대한 200 응답과 POST 반복, 업로드 시점과의 연계이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 상관분석 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant U as auth.log
+  participant W as access.log
+  participant T as 타임라인
+  A->>U: 실패 로그인 집계
+  U-->>A: 공격 IP 후보
+  A->>W: 후보 IP 행위 조회
+  W-->>A: 스캔·페이로드 흔적
+  A->>T: 시간순 병합
+  T-->>A: 공격 시나리오 완성</div><p class="text-muted small">읽는 법: 인증 로그에서 후보를 뽑고 웹 로그에서 행위를 확인한 뒤, 시간축 하나로 합쳐 시나리오를 완성합니다.</p>
+<h4 class="mt-4">6. 흔한 실수</h4><ul><li>인코딩된 페이로드를 디코딩 없이 grep해 탐지를 놓치는 경우</li><li>로그 순환(logrotate)으로 잘린 구간의 공백을 공격 종료로 오판하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="forensics-l03-01.html">← 디스크 이미징</a><a class="btn btn-primary" href="forensics-l05-01.html">메모리 포렌식 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

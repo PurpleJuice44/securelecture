@@ -33,7 +33,20 @@ vol.py -f mem.raw --profile=Win7SP1x64 psxview
 vol.py -f mem.raw --profile=Win7SP1x64 netscan
 # 4) 코드 인젝션 흔적
 vol.py -f mem.raw --profile=Win7SP1x64 malfind -D dump/
-vol.py -f mem.raw --profile=Win7SP1x64 ldrmodules</pre><h4 class="mt-4">4. 실습</h4><ol><li><code>imageinfo</code>로 프로파일을 확정한다.</li><li><code>pstree</code>에서 부모 없는 프로세스와 낯선 부모-자식 쌍을 3개 고른다.</li><li><code>netscan</code>으로 외부 연결 프로세스를 뽑아 2번과 대조한다.</li><li><code>malfind</code> 덤프를 <code>strings</code>로 살펴본다.</li><li>의심 프로세스 1개를 골라 4가지 지표(부모·경로·시각·연결) 근거를 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>메모리 분석이 필요한 경우는?</li><li>pslist의 용도는?</li><li>덤프를 디스크 이미징보다 먼저 하는 이유는?</li><li>프로파일 판별을 먼저 해야 하는 이유는?</li><li><code>malfind</code>가 찾는 것은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>파일리스 악성코드·실행 중 연결·암호화 키처럼 디스크에 남지 않는 흔적을 볼 때이다.</li><li>메모리 속 프로세스 목록을 뽑아 PID·PPID·시작 시각을 확인하는 것이다.</li><li>메모리는 휘발성이라 전원이 꺼지거나 시간이 지나면 사라지기 때문이다.</li><li>프로파일(커널 구조 정의)이 틀리면 이후 모든 파싱 결과가 어긋나기 때문이다.</li><li>정상 이미지와 다른 메모리 보호 속성(RWX 사설 영역 등)의 인젝션 의심 코드이다.</li></ol></details><h4 class="mt-4">6. 흔한 실수</h4><ul><li>분석용 도구를 감염 시스템에서 직접 실행해 메모리를 오염시키는 경우. 덤프는 최소 개입 도 Dir로, 분석은 별도 머신에서 한다.</li><li>프로파일 미확정 상태에서 모듈 결과를 해석해 오판하는 경우</li></ul>
+vol.py -f mem.raw --profile=Win7SP1x64 ldrmodules</pre><h4 class="mt-4">4. 실습</h4><ol><li><code>imageinfo</code>로 프로파일을 확정한다.</li><li><code>pstree</code>에서 부모 없는 프로세스와 낯선 부모-자식 쌍을 3개 고른다.</li><li><code>netscan</code>으로 외부 연결 프로세스를 뽑아 2번과 대조한다.</li><li><code>malfind</code> 덤프를 <code>strings</code>로 살펴본다.</li><li>의심 프로세스 1개를 골라 4가지 지표(부모·경로·시각·연결) 근거를 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>메모리 분석이 필요한 경우는?</li><li>pslist의 용도는?</li><li>덤프를 디스크 이미징보다 먼저 하는 이유는?</li><li>프로파일 판별을 먼저 해야 하는 이유는?</li><li><code>malfind</code>가 찾는 것은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>파일리스 악성코드·실행 중 연결·암호화 키처럼 디스크에 남지 않는 흔적을 볼 때이다.</li><li>메모리 속 프로세스 목록을 뽑아 PID·PPID·시작 시각을 확인하는 것이다.</li><li>메모리는 휘발성이라 전원이 꺼지거나 시간이 지나면 사라지기 때문이다.</li><li>프로파일(커널 구조 정의)이 틀리면 이후 모든 파싱 결과가 어긋나기 때문이다.</li><li>정상 이미지와 다른 메모리 보호 속성(RWX 사설 영역 등)의 인젝션 의심 코드이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 메모리 분석 파이프라인</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant D as 메모리 덤프
+  participant V as Volatility
+  participant J as 판정
+  A->>D: 해시 검증 후 적재
+  D-->>V: imageinfo
+  V-->>A: 프로파일 확정
+  A->>V: pstree·netscan
+  V-->>A: 프로세스·연결 목록
+  A->>V: malfind 심층
+  V-->>J: 인젝션 근거
+  J-->>A: 의심 프로세스 확정</div><p class="text-muted small">읽는 법: 프로파일 확정 없이 심층 분석으로 건너뛰지 않습니다. 넓게 보고(프로세스) 좁게 찌르는(인젝션) 순서입니다.</p>
+<h4 class="mt-4">6. 흔한 실수</h4><ul><li>분석용 도구를 감염 시스템에서 직접 실행해 메모리를 오염시키는 경우. 덤프는 최소 개입 도 Dir로, 분석은 별도 머신에서 한다.</li><li>프로파일 미확정 상태에서 모듈 결과를 해석해 오판하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="forensics-l04-01.html">← 로그 분석</a><a class="btn btn-primary" href="forensics-l06-01.html">네트워크 포렌식 (pcap) →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
