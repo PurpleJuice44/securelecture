@@ -16,9 +16,28 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>?file=../../etc/passwd 형태의 원리</li><li>경로 정규화 + 화이트리스트로 대응</li><li>구버전 Null Byte(%00) 우회 이슈</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>?file=../../etc/passwd 형태의 원리</li><li>경로 정규화 + 화이트리스트로 대응</li><li>구버전 Null Byte(%00) 우회 이슈</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">?file=../../../../etc/passwd</pre>
-<h4 class="mt-4">4. 실습</h4><p>실습 앱에서 차단 전/후 응답을 비교하고 보고서로 정리.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>대응법 2가지는?</li><li>왜 화이트리스트가 안전한가?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 경로가 해석되는 과정</h4><p>서버는 <code>?file=공지.txt</code>를 받아 기본 디렉토리 뒤에 붙입니다. 공격자가 <code>../</code>를 넣으면 상위 폴더로 빠져나가, <code>/etc/passwd</code> 같은 시스템 파일까지 읽힙니다. 방어는 <strong>정규화 후 화이트리스트 대조</strong>가 정석입니다.</p><div class="mermaid">flowchart TD
+  Q["요청 ?file=입력"] --> J["기본경로 + 입력 결합"]
+  J --> N["정규화<br/>../ 해소"]
+  N --> W{"허용 목록 안에 있는가"}
+  W -->|예| R["파일 전송"]
+  W -->|아니오| B["차단·로그"]
+  Q2["공격 ?file=..%2f..%2fetc/passwd"] --> D["디코딩·정규화"]
+  D --> W</div><p class="text-muted small">읽는 법: 인코딩된 우회(<code>%2e%2e%2f</code>)도 디코딩→정규화하면 원래 모습이 드러나 화이트리스트에서 걸러집니다.</p><h4 class="mt-4">2-3. 우회 vs 대응표</h4><table class="table table-sm table-bordered"><tr><th>우회 시도</th><th>원리</th><th>대응</th></tr><tr><td><code>../</code> 반복</td><td>상위 이동</td><td>정규화+화이트리스트</td></tr><tr><td><code>%2e%2e%2f</code></td><td>인코딩 은닉</td><td>디코딩 후 검사</td></tr><tr><td><code>....//</code></td><td>필터 제거 후 재조합</td><td>제거 반복이 아닌 허용 목록</td></tr><tr><td>Null Byte <code>%00</code></td><td>구버전 문자열 절단</td><td>최신 런타임·확장자 검증</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">?file=../../../../etc/passwd</pre><h4 class="mt-4">3-2. 심화 예제: 차단 전후 비교(실습 앱)</h4><pre class="bg-light p-3 border rounded"># 정상 요청 기준선
+curl -s "http://실습호스트/view?file=notice.txt" | head -3
+# 공격 시도 (차단 전후 응답·상태코드 비교)
+curl -s -o /dev/null -w "%{http_code}\n" "http://실습호스트/view?file=../../../../etc/passwd"
+curl -s "http://실습호스트/view?file=%2e%2e%2f%2e%2e%2fetc%2fpasswd" | head -3
+# 서버 로그에서 시도 기록 확인
+grep -E "etc/passwd|%2e%2e" access.log | tail</pre><h4 class="mt-4">4. 실습</h4><ol><li>실습 앱에서 차단 전/후 응답을 비교하고 보고서로 정리.</li><li>인코딩 우회 2종을 시도해 어느 단계에서 막히는지 기록한다.</li><li>화이트리스트 방식과 블랙리스트 방식의 차이를 코드로 확인한다.</li><li>차단 로그가 남는지, 남는다면 어떤 값이 기록되는지 본다.</li><li>대응 코드를 한 함수로 정리해 제출한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>대응법 2가지는?</li><li>왜 화이트리스트가 안전한가?</li><li>인코딩 우회를 막으려면 검사 순서는?</li><li><code>....//</code>가 필터를 통과하는 이유는?</li><li>Null Byte 공격이 통했던 근본 원인은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>경로 정규화 후 화이트리스트 대조, 그리고 최소 권한의 파일 접근 범위 제한이다.</li><li>막을 것을 나열하면 새 우회가 뚫리지만, 허용할 것만 정하면 나머지는 전부 차단되기 때문이다.</li><li>디코딩→정규화→대조 순서이다. 검사 후 디코딩하면 우회가 그대로 통과한다.</li><li>필터가 <code>../</code>를 한 번만 지우면 남은 문자가 다시 합쳐지기 때문이다.</li><li>구버전 C 계열 문자열 처리가 널 바이트에서 끊겨 뒤의 확장자 검사를 무력화했기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 방어 순서</h4><div class="mermaid">sequenceDiagram
+  participant A as 공격자
+  participant S as 서버
+  participant F as 파일시스템
+  A->>S: file=..%2f..%2fpasswd
+  S->>S: 디코딩·정규화
+  S->>S: 화이트리스트 대조
+  S-->>A: 차단 (403·로그)
+  S->>F: 허용된 경우만 읽기</div><p class="text-muted small">읽는 법: 파일시스템에 닿기 전에 디코딩·정규화·대조 3관문을 모두 통과해야 합니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li><code>../</code> 문자열 제거 한 번으로 끝내는 경우. 우회 재조합에 그대로 뚫린다.</li><li>검사 후 디코딩하는 순서 실수. 반드시 디코딩이 먼저이다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="web-l02-01.html">← 쿠키·세션·인증</a><a class="btn btn-primary" href="web-l04-01.html">파일 업로드 취약점 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

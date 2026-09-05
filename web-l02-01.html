@@ -16,9 +16,29 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>쿠키는 브라우저에, 세션 데이터는 서버에 저장</li><li>세션ID 탈취 시 계정 도용(세션 하이재킹)</li><li>Secure·HttpOnly·SameSite 쿠키 속성</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>쿠키는 브라우저에, 세션 데이터는 서버에 저장</li><li>세션ID 탈취 시 계정 도용(세션 하이재킹)</li><li>Secure·HttpOnly·SameSite 쿠키 속성</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Lax</pre>
-<h4 class="mt-4">4. 실습</h4><p>Application 탭에서 실습 사이트의 쿠키 값을 확인한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>세션ID가 탈취되면 생기는 일은?</li><li>HttpOnly의 효과는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 로그인 유지의 비밀</h4><p>HTTP는 매번 처음 만난 듯 행동합니다(무상태). 그래서 서버는 로그인 성공 시 <strong>세션ID라는 임시 출입증</strong>을 발급하고, 브라우저는 쿠키에 넣어 매 요청마다 제시합니다. 출입증을 훔치면 본인 확인 없이 출입이 가능합니다.</p><div class="mermaid">sequenceDiagram
+  participant B as 브라우저
+  participant S as 서버
+  participant DB as 세션 저장소
+  B->>S: 로그인 요청 (ID·PW)
+  S->>DB: 세션 생성·저장
+  DB-->>S: 세션ID 발급
+  S-->>B: Set-Cookie 세션ID
+  B->>S: 이후 요청마다 Cookie 제시
+  S->>DB: 세션ID 대조
+  DB-->>S: 사용자 복원</div><p class="text-muted small">읽는 법: 비밀번호 검사는 최초 1회뿐, 이후 인증은 세션ID 대조로 대체됩니다. 그래서 세션ID가 곧 열쇠입니다.</p><h4 class="mt-4">2-3. 쿠키 방어 3종</h4><table class="table table-sm table-bordered"><tr><th>속성</th><th>막는 공격</th><th>설명</th></tr><tr><td>HttpOnly</td><td>XSS 쿠키 탈취</td><td>JS에서 document.cookie 접근 차단</td></tr><tr><td>Secure</td><td>평문 도청</td><td>HTTPS에서만 전송</td></tr><tr><td>SameSite</td><td>CSRF</td><td>타 사이트 요청에 쿠키 제외(Lax·Strict)</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Lax</pre><h4 class="mt-4">3-2. 심화 예제: 세션 고정·하이재킹 개념 실험(실습 환경)</h4><pre class="bg-light p-3 border rounded"># 1) 로그인 전후 세션ID 비교 (고정 여부 확인)
+# 개발자도구 Application → Cookies: 로그인 전 session 값 기록
+# 로그인 수행 → session 값 기록 → 바뀌었는가?
+# 2) 방어 속성 확인
+# Secure·HttpOnly·SameSite 중 빠진 것이 있는가?
+# 3) 로그아웃 후 이전 세션ID 재사용 시도 → 서버가 거부하는가?</pre><h4 class="mt-4">4. 실습</h4><ol><li>Application 탭에서 실습 사이트의 쿠키 값을 확인한다.</li><li>로그인 전후 세션ID 변경 여부(세션 고정 대응)를 기록한다.</li><li>쿠키 3속성 중 빠진 것을 찾아 위험을 한 줄로 적는다.</li><li>로그아웃 후 이전 쿠키로 접근해 세션 파기 여부를 확인한다.</li><li>세션 저장 위치(메모리·DB·JWT)가 어디인지 관리자 관점에서 추정한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>세션ID가 탈취되면 생기는 일은?</li><li>HttpOnly의 효과는?</li><li>세션 고정 공격의 원리는?</li><li>SameSite=Lax와 Strict의 차이는?</li><li>로그아웃 시 서버가 해야 할 일은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>비밀번호 없이 피해자 권한으로 접근하는 세션 하이재킹이 발생한다.</li><li>자바스크립트의 쿠키 접근을 막아 XSS 경유 탈취를 차단한다.</li><li>공격자가 심어둔 세션ID로 피해자가 로그인하게 해 그 세션을 공유하는 것이다.</li><li>Lax는 최상위 GET 이동을 허용하고, Strict는 모든 크로스 사이트 전송을 차단한다.</li><li>서버 저장소에서 해당 세션을 파기해야 한다. 쿠키 삭제만으로는 부족하다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 공격 경로</h4><div class="mermaid">flowchart TD
+  X["XSS 취약점"] --> H["HttpOnly 미설정"]
+  H --> T["세션ID 탈취"]
+  N["평문 HTTP"] --> S2["Secure 미설정"]
+  S2 --> T
+  C["외부 링크 클릭"] --> SS["SameSite 미설정"]
+  SS --> CSRF["CSRF 성립"]
+  T --> HJ["계정 탈취"]</div><p class="text-muted small">읽는 법: 세 속성 중 하나라도 빠지면 해당 경로로 공격이 성립합니다. 방어는 세 속성을 한 세트로 봅니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>HttpOnly만 켜고 Secure를 빼 평문 구간에서 탈취당하는 경우</li><li>로그아웃이 쿠키 삭제뿐이라 서버 세션이 살아 있는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="web-l01-01.html">← HTTP와 개발자도구</a><a class="btn btn-primary" href="web-l03-01.html">디렉토리 트래버설 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

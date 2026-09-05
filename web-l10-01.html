@@ -16,10 +16,25 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>사전 합의: 범위·기간·금지행위 문서화</li><li>위험도(상/중/하) 산정 기준</li><li>재현 단계 + 스크린샷 + 대응방안(단기/중장기)</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>사전 합의: 범위·기간·금지행위 문서화</li><li>위험도(상/중/하) 산정 기준</li><li>재현 단계 + 스크린샷 + 대응방안(단기/중장기)</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">보고서 목차: 개요 → 발견사항 → 상세재현 → 대응방안 → 결론</pre>
-<h4 class="mt-4">4. 실습</h4><p>취약점 1건을 위 목차로 보고서 1건 작성.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>보고서 필수 항목 3가지는?</li><li>진단 전 반드시 합의할 것은?</li></ol>
-<div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="web-l09-01.html">← Burp Suite 실전 진단</a></div></main>
+<h4 class="mt-4">2-2. 동작 원리 심화: 프로젝트 파이프라인</h4><p>모의해킹은 기술이 아니라 <strong>계약 기반 프로젝트</strong>입니다. 범위 합의→진단→보고→재시험의 4단계를 문서로 남기며 진행합니다.</p><div class="mermaid">flowchart TD
+  A["사전 합의<br/>범위·기간·금지행위"] --> R["정찰<br/>Scope 내 매핑"]
+  R --> D["진단<br/>자동+수동"]
+  D --> V["검증<br/>오탐 제거·재현"]
+  V --> RP["보고<br/>위험도·재현·대책"]
+  RP --> RT["재시험<br/>패치 확인"]</div><p class="text-muted small">읽는 법: 어느 단계도 구두로 진행하지 않습니다. 합의서·발견표·보고서·재시험 확인서가 산출물입니다.</p><h4 class="mt-4">2-3. 위험도 산정표</h4><table class="table table-sm table-bordered"><tr><th>등급</th><th>기준 예시</th><th>대응 기한</th></tr><tr><td>상</td><td>인증 없이 데이터 유출·RCE</td><td>즉시, 임시차단 병행</td></tr><tr><td>중</td><td>로그인 필요 정보노출·권한상승</td><td>단기 패치</td></tr><tr><td>하</td><td>정보노출·보안 헤더 미비</td><td>정기 반영</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">보고서 목차: 개요 → 발견사항 → 상세재현 → 대응방안 → 결론</pre><h4 class="mt-4">3-2. 심화 예제: 발견사항 1건 작성 틀</h4><pre class="bg-light p-3 border rounded">[W-01] 저장형 XSS (위험도: 상)
+- 위치: https://실습호스트/board (comment 파라미터)
+- 재현: 1) 페이로드 입력 2) 저장 3) 타 계정 접속 시 실행
+- 영향: 세션 탈취 → 계정 장악
+- 근거: 요청·응답 캡처, 실행 화면
+- 대응(단기): 출력 인코딩 적용, 해당 게시글 삭제
+- 대응(중장기): CSP 도입, 입력 검증 체계화</pre><h4 class="mt-4">4. 실습</h4><ol><li>취약점 1건을 위 목차로 보고서 1건 작성.</li><li>재현 단계를 제3자가 따라 할 수 있는지 검증한다.</li><li>위험도를 기준표에 비추어 산정 근거를 적는다.</li><li>단기·중장기 대책을 나눠 제안한다.</li><li>경영진용 5줄 요약을 덧붙인다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>보고서 필수 항목 3가지는?</li><li>진단 전 반드시 합의할 것은?</li><li>재현 단계가 필요한 이유는?</li><li>위험도 산정 시 기술적 심각도와 함께 보는 것은?</li><li>재시험이 필요한 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>재현 단계, 영향·위험도, 대응방안이다.</li><li>범위·기간·금지행위(서비스 중단·데이터 파괴 금지 등)이다.</li><li>고객이 직접 확인하고 패치 여부를 검증할 수 있어야 하기 때문이다.</li><li>노출 범위·악용 난이도·비즈니스 영향이다.</li><li>패치가 실제로 됐는지, 우회 경로는 없는지 확인해야 종결되기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 종결 조건</h4><div class="mermaid">sequenceDiagram
+  participant D as 진단자
+  participant C as 고객
+  D->>C: 보고서 제출
+  C->>C: 패치 적용
+  C->>D: 재시험 요청
+  D->>C: 통과·잔여위험 통보
+  C-->>D: 프로젝트 종결</div><p class="text-muted small">읽는 법: 보고로 끝나지 않고 재시험 통과가 종결 조건입니다. 잔여위험은 문서로 남깁니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>재현 없는 보고서. 고객이 검증할 수 없어 신뢰를 잃는다.</li><li>합의 범위 밖 발견을 본문에 섞는 경우. 별도 고지로 분리한다.</li></ul><div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="web-l09-01.html">← Burp Suite 실전 진단</a><a class="btn btn-outline-secondary" href="field-web.html">분야 목차 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><button id="toTop" class="btn btn-dark rounded-circle" title="맨 위로">↑</button><script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:"base",securityLevel:"loose"});var t=document.getElementById("toTop");window.addEventListener("scroll",function(){t.style.display=window.scrollY>400?"block":"none"});t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});</script></body></html>

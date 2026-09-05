@@ -16,9 +16,29 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>이미지·폼 자동요청으로 송금/탈퇴 등 상태변경 유도</li><li>대응: CSRF 토큰, SameSite 쿠키</li><li>GET 요청으로 상태변경 금지</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>이미지·폼 자동요청으로 송금/탈퇴 등 상태변경 유도</li><li>대응: CSRF 토큰, SameSite 쿠키</li><li>GET 요청으로 상태변경 금지</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded"><img src="https://bank.example/transfer?to=atk&amt=10000">  (개념 예시)</pre>
-<h4 class="mt-4">4. 실습</h4><p>토큰 유무에 따른 요청 성공/실패를 비교한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>CSRF 토큰의 검증 원리는?</li><li>SameSite=Lax의 효과는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 왜 브라우저는 속는가</h4><p>브라우저는 요청이 <strong>사용자 의지인지 공격자 유도인지 구분하지 못합니다</strong>. 로그인된 상태에서 공격자 페이지의 이미지·폼이 은행으로 요청을 보내면, 쿠키가 자동으로 딸려가 정상 요청처럼 처리됩니다.</p><div class="mermaid">sequenceDiagram
+  participant V as 피해자
+  participant E as 공격자 페이지
+  participant B as 은행 서버
+  V->>E: 악성 페이지 접속
+  E-->>V: 자동 요청 코드 포함
+  V->>B: 송금 요청 + 쿠키 자동 첨부
+  B-->>V: 토큰 검증 없이 처리
+  V->>B: 의도치 않은 송금 완료</div><p class="text-muted small">읽는 법: 3번째 화살표가 핵심입니다. 쿠키는 브라우저가 알아서 붙이므로, 서버는 토큰 같은 별도 증거 없이는 위조를 가려낼 수 없습니다.</p><h4 class="mt-4">2-3. 대응 3종</h4><table class="table table-sm table-bordered"><tr><th>대응</th><th>원리</th><th>주의</th></tr><tr><td>CSRF 토큰</td><td>예측 불가 값을 세션과 대조</td><td>GET에 토큰을 노출하지 말 것</td></tr><tr><td>SameSite 쿠키</td><td>타 사이트 요청에 쿠키 제외</td><td>Lax는 최상위 GET 허용</td></tr><tr><td>Referer·Origin 검증</td><td>출발지 확인</td><td>단독 사용은 약함(보조 수단)</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">&lt;img src="https://bank.example/transfer?to=atk&amp;amt=10000"&gt;  (개념 예시)</pre><h4 class="mt-4">3-2. 심화 예제: 토큰 검증 로직(개념 코드)</h4><pre class="bg-light p-3 border rounded">&lt;!-- 서버가 폼에 심는 토큰 --&gt;
+&lt;form method="POST" action="/transfer"&gt;
+  &lt;input type="hidden" name="csrf" value="RANDOM-TOKEN"&gt;
+&lt;/form&gt;
+// 서버 검증 순서
+// 1) 세션의 토큰과 제출된 토큰 비교 (상수시간 비교)
+// 2) 불일치 → 403 + 로그
+// 3) 상태변경 API는 POST·PUT·DELETE로만 허용</pre><h4 class="mt-4">4. 실습</h4><ol><li>토큰 유무에 따른 요청 성공/실패를 비교한다.</li><li>GET 송금 URL을 직접 호출해 상태변경 금지 원칙을 확인한다.</li><li>SameSite를 None으로 바꿨을 때 공격 HTML이 통하는지 본다(실습 환경).</li><li>Referer 검증만으로 막히는 경우와 뚫리는 경우를 구분한다.</li><li>토큰+SameSite 2중 적용 후 재시험한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>CSRF 토큰의 검증 원리는?</li><li>SameSite=Lax의 효과는?</li><li>GET으로 송금하면 안 되는 이유는?</li><li>토큰을 URL 쿼리에 넣으면 안 되는 이유는?</li><li>Referer 검사를 단독 대응으로 쓰지 않는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>서버만 아는 난수를 세션에 저장하고 요청마다 대조해, 외부 페이지가 만든 요청을 걸러낸다.</li><li>타 사이트의 POST·iframe 등에는 쿠키를 보내지 않아 위조 요청을 무력화한다.</li><li>이미지·링크 클릭 한 번으로 의도치 않은 상태변경이 일어나기 때문이다.</li><li>URL은 로그·히스토리에 남아 토큰이 유출되기 때문이다.</li><li>Referer는 억제·위조가 가능해 신뢰할 수 없기 때문이다. 보조 수단으로만 쓴다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 방어 흐름</h4><div class="mermaid">flowchart TD
+  Q["상태변경 요청 도착"] --> M{"메서드가 안전한가"}
+  M -->|GET 등| B["거부"]
+  M -->|POST 등| T{"토큰 일치?"}
+  T -->|아니오| B
+  T -->|예| S{"SameSite·출발지 정상?"}
+  S -->|예| OK["처리"]
+  S -->|아니오| B</div><p class="text-muted small">읽는 법: 메서드 제한→토큰→쿠키·출발지 순으로 3관문을 둡니다. 하나만으로는 부족합니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>토큰 검증을 일부 API에만 적용해 다른 엔드포인트가 뚫리는 경우</li><li>Ajax 요청에 토큰을 빼먹고 CORS만 믿는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="web-l05-03.html">← XSS (크로스사이트 스크립팅)</a><a class="btn btn-primary" href="web-l05-02.html">SSRF (서버측 요청위조) →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

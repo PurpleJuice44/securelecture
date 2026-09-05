@@ -16,11 +16,30 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>메서드: GET(조회)/POST(제출)/PUT/DELETE</li><li>상태코드: 200/301/404/500의 의미</li><li>헤더: Cookie, User-Agent, Content-Type</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>메서드: GET(조회)/POST(제출)/PUT/DELETE</li><li>상태코드: 200/301/404/500의 의미</li><li>헤더: Cookie, User-Agent, Content-Type</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">GET /login?user=bob HTTP/1.1
+<h4 class="mt-4">2-2. 동작 원리 심화: 요청·응답 해부도</h4><p>HTTP 메시지는 <strong>시작줄·헤더·빈줄·본문</strong> 4부로 이루어집니다. 진단의 절반은 헤더를 읽는 것이며, 나머지 절반은 상태코드를 해석하는 것입니다.</p><div class="mermaid">flowchart TD
+  R["HTTP 요청"] --> M["메서드<br/>GET·POST·PUT·DELETE"]
+  R --> P["경로+쿼리<br/>/item?id=7"]
+  R --> H["헤더<br/>Host·Cookie·UA"]
+  R --> B["본문<br/>POST 폼·JSON"]
+  S["HTTP 응답"] --> C["상태코드<br/>2xx·3xx·4xx·5xx"]
+  S --> SH["응답 헤더<br/>Set-Cookie·Location"]
+  S --> SB["본문<br/>HTML·JSON"]</div><p class="text-muted small">읽는 법: 요청 4요소와 응답 3요소를 외우면 개발자도구의 모든 탭(Headers·Payload·Response·Cookies)이 제자리에 들어갑니다.</p><h4 class="mt-4">2-3. 상태코드速표</h4><table class="table table-sm table-bordered"><tr><th>코드</th><th>의미</th><th>진단 힌트</th></tr><tr><td>200</td><td>성공</td><td>본문에 에러 문구가 있으면 로직 오류 의심</td></tr><tr><td>301·302</td><td>리다이렉트</td><td>Location 추적, open redirect 점검</td></tr><tr><td>403</td><td>금지됨</td><td>권한 우회 테스트 대상</td></tr><tr><td>404</td><td>없음</td><td>스캔 흔적 집계에 활용</td></tr><tr><td>500</td><td>서버 오류</td><td>SQL 에러 노출 여부 확인</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">GET /login?user=bob HTTP/1.1
 Host: example.com
-Cookie: session=abc123</pre>
-<h4 class="mt-4">4. 실습</h4><p>F12 → Network → 새로고침 → 첫 요청의 Headers/Response 확인.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>GET과 POST의 차이는?</li><li>404와 500의 차이는?</li></ol>
+Cookie: session=abc123</pre><h4 class="mt-4">3-2. 심화 예제: 개발자도구 읽기 루틴</h4><pre class="bg-light p-3 border rounded"># F12 → Network → Preserve log 체크 → 새로고침
+# 1) 첫 document 요청 클릭 → Headers: General(메서드·상태·URL)
+# 2) Request Headers에서 Cookie·User-Agent 확인
+# 3) Response Headers에서 Set-Cookie·Content-Type 확인
+# 4) Response 탭에서 실제 본문과 화면 비교
+# curl로 같은 요청 재현
+curl -s -D - "https://example.com/login?user=bob" -o /dev/null</pre><h4 class="mt-4">4. 실습</h4><ol><li>F12 → Network → 새로고침 → 첫 요청의 Headers/Response 확인.</li><li>요청 헤더에서 Cookie 값을 찾아 Application 탭 값과 대조한다.</li><li>404를 일부러 유발하고(없는 경로) 응답을 관찰한다.</li><li>POST 폼 1개를 제출하며 Payload 탭의 전송 형식을 확인한다.</li><li>같은 요청을 curl로 재현해본다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>GET과 POST의 차이는?</li><li>404와 500의 차이는?</li><li>쿠키가 실리는 위치는 요청·응답 중 어디인가? 각각의 헤더 이름은?</li><li>302 응답에서 반드시 봐야 할 헤더는?</li><li>200 OK인데 화면에 에러가 뜨면 어디를 의심하는가?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>GET은 URL에 붙여 조회 위주, POST는 본문에 담아 제출·변경 위주이다. 보안 경계는 아니다.</li><li>404는 클라이언트가 없는 자원을 요청, 500은 서버 내부 처리 실패이다.</li><li>요청은 Cookie, 응답은 Set-Cookie이다.</li><li>Location이다. 리다이렉트 목적지가 외부 도메인인지(open redirect) 본다.</li><li>애플리케이션 로직 오류이다. 상태코드가 아니라 본문·콘솔을 본다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 진단 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 진단자
+  participant D as 개발자도구
+  participant S as 서버
+  A->>D: Network 기록 시작
+  D-->>S: 요청 캡처
+  S-->>D: 응답 캡처
+  D-->>A: 상태·헤더·본문 표시
+  A->>A: 이상 징후 판정</div><p class="text-muted small">읽는 법: 도구가 대신 보는 것이 아니라, 무엇을 볼지 아는 사람이 쓰는 것입니다. 상태→헤더→본문 순서로 읽습니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>GET이라 안전하고 POST라 위험하다고 착각하는 경우. 둘 다 조작 가능하다.</li><li>캐시된 응답을 보고 서버가 고쳐진 줄 아는 경우. 하드 새로고침(Ctrl+Shift+R) 습관화.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="web-l00-01.html">← 웹 동작원리</a><a class="btn btn-primary" href="web-l02-01.html">쿠키·세션·인증 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

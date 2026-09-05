@@ -10,6 +10,28 @@
 <main class="col-lg-9 col-md-8 p-4"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">목차</a></li>
 <li class="breadcrumb-item active">🌐 웹</li></ol></nav>
 <h1>🌐 웹</h1><p class="lead">웹 취약점 진단의 핵심 분야. HTTP부터 XSS·SQLi·SSRF까지.</p>
+<h3 class="mt-4">분야 아키텍처: 요청이 흘러가는 길</h3><p>웹 해킹은 결국 이 흐름 어딘가를 가로채거나 속이는 기술입니다. 각 장은 이 경로의 한 구간을 담당합니다.</p>
+<div class="mermaid">flowchart TD
+  B["브라우저<br/>렌더링·스크립트 실행"] --> N["네트워크<br/>DNS·TLS·HTTP"]
+  N --> S["웹 서버<br/>라우팅·정적 처리"]
+  S --> A["애플리케이션<br/>세션·권한·입력 처리"]
+  A --> D["데이터베이스<br/>SQL·ORM"]
+  A --> E["외부 연동<br/>SSRF·JWT 검증"]
+  D --> R["응답 역주행<br/>D→A→S→N→B"]</div>
+<p class="text-muted small">읽는 법: 왼쪽이 사용자, 오른쪽으로 갈수록 서버 깊숙한 곳입니다. XSS는 B 지점, 인증·SSRF는 A·E 지점, SQLi는 D 지점에서 터집니다.</p>
+<h3 class="mt-4">학습 로드맵</h3><p>동작 원리에서 출발해 클라이언트 공격(XSS·CSRF)→서버 공격(SQLi·SSRF)→인증(JWT)→실전(Burp·모의해킹)으로 심화합니다.</p>
+<div class="mermaid">flowchart LR
+  W0["L0 동작원리"] --> W1["L1 HTTP·개발자도구"]
+  W1 --> W2["L2 쿠키·세션·인증"]
+  W2 --> W3["L3 디렉토리 트래버설"]
+  W3 --> W4["L4 파일 업로드"]
+  W4 --> W5["L5 XSS·CSRF·SSRF"]
+  W5 --> W6["L6 SQLi 기초"]
+  W6 --> W7["L7 Blind SQLi"]
+  W7 --> W8["L8 JWT"]
+  W8 --> W9["L9 Burp 실전"]
+  W9 --> W10["L10 모의해킹 프로젝트"]</div>
+<p class="text-muted small">읽는 법: 왼쪽부터 순서대로 학습하세요. L5의 3장은 서로 독립이라 순서가 바뀌어도 됩니다.</p>
 <p><span class="badge text-bg-primary">총 13장</span> <span class="badge text-bg-light text-dark border">Level = 막(難易度) · 장 = 기술</span></p>
 <h4 class="mt-4"><span class="badge text-bg-secondary">Level 0</span></h4><div class="row g-3"><div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
 <h6 class="card-title">웹 동작원리</h6><p class="card-text small text-muted">브라우저가 서버와 대화하는 전체 흐름을 이해한다.</p>

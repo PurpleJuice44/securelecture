@@ -16,10 +16,30 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>' OR '1'='1' -- 형태의 인증 우회 원리</li><li>UNION SELECT로 테이블 데이터 추출</li><li>대응: Prepared Statement, 최소권한 DB 계정</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>' OR '1'='1' -- 형태의 인증 우회 원리</li><li>UNION SELECT로 테이블 데이터 추출</li><li>대응: Prepared Statement, 최소권한 DB 계정</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">' OR '1'='1' --
-' UNION SELECT user, password FROM users --</pre>
-<h4 class="mt-4">4. 실습</h4><p>DVWA(security=low)에서 로그인 우회 재현 후 바인딩 코드로 수정.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>바인딩이 안전한 이유는?</li><li>에러 메시지를 숨기는 이유는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 쿼리가 합쳐지는 순간</h4><p>서버는 문자열을 이어 붙여 SQL을 만듭니다. 입력값에 따옴표·주석이 끼면 <strong>개발자가 짠 쿼리와 공격자가 완성한 쿼리가 달라집니다</strong>. 로그인은 우회되고, UNION은 다른 테이블을 끌어옵니다.</p><div class="mermaid">flowchart TD
+  I["사용자 입력<br/>id + pw"] --> Q["문자열 결합<br/>SELECT ... WHERE"]
+  Q --> C{"입력에 SQL 문법?"}
+  C -->|없음| N["정상 쿼리 실행"]
+  C -->|있음| M["쿼리 구조 변조<br/>OR 1=1·주석"]
+  M --> A["인증 우회·데이터 유출"]
+  A --> U["UNION 확장<br/>타 테이블 추출"]</div><p class="text-muted small">읽는 법: 입력이 문자열로 합쳐지는 지점이 취약점입니다. 바인딩(Prepared Statement)은 값과 코드를 분리해 이 합침을 원천 차단합니다.</p><h4 class="mt-4">2-3. 단계별 추출표</h4><table class="table table-sm table-bordered"><tr><th>단계</th><th>목적</th><th>페이로드 예시</th></tr><tr><td>우회</td><td>로그인 통과</td><td><code>' OR '1'='1' --</code></td></tr><tr><td>컬럼 수</td><td>UNION 맞추기</td><td><code>' ORDER BY 3 --</code></td></tr><tr><td>추출</td><td>데이터 읽기</td><td><code>' UNION SELECT user,password FROM users --</code></td></tr><tr><td>대응</td><td>원천 차단</td><td>바인딩+최소권한+에러 숨김</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">' OR '1'='1' --
+' UNION SELECT user, password FROM users --</pre><h4 class="mt-4">3-2. 심화 예제: Burp Repeater 진단 순서(실습 앱)</h4><pre class="bg-light p-3 border rounded"># 1) 따옴표 1개 삽입 → SQL 에러·동작 변화 관찰
+id=7' 
+# 2) 참/거짓 비교로 인젝션 확정
+id=7 AND 1=1 --    (정상)
+id=7 AND 1=2 --    (비정상·빈 결과)
+# 3) ORDER BY로 컬럼 수 확정 후 UNION 추출
+id=7 UNION SELECT 1,2,3 --
+id=7 UNION SELECT user(),database(),version() --</pre><h4 class="mt-4">4. 실습</h4><ol><li>DVWA(security=low)에서 로그인 우회 재현 후 바인딩 코드로 수정.</li><li>따옴표·참/거짓 2종으로 인젝션 여부를 판정한다.</li><li>ORDER BY로 컬럼 수를 확정한다.</li><li>UNION으로 DB 사용자·버전을 추출한다.</li><li>바인딩 적용 후 동일 페이로드가 무력화되는지 검증한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>바인딩이 안전한 이유는?</li><li>에러 메시지를 숨기는 이유는?</li><li><code>ORDER BY</code>로 컬럼 수를 아는 원리는?</li><li>UNION 사용의 전제조건 2가지는?</li><li>DB 계정 최소권한이 필요한 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>값과 SQL 코드를 분리해 입력이 코드로 해석되지 않기 때문이다.</li><li>에러 문구에 테이블·컬럼명이 노출되어 공격 힌트가 되기 때문이다.</li><li>존재하지 않는 번호에서 에러가 나므로 경계를 찾을 수 있기 때문이다.</li><li>양쪽 SELECT의 컬럼 수·타입이 일치해야 한다.</li><li>뚫려도 읽을 수 있는 범위를 최소화해 피해를 줄이기 위해서이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 진단 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 진단자
+  participant S as 서버
+  participant D as DB
+  A->>S: 따옴표·참거짓 판정
+  S->>D: 변조 쿼리 실행
+  D-->>S: 에러·결과 차이
+  S-->>A: 인젝션 확정
+  A->>S: UNION 추출
+  S-->>A: 데이터 반환</div><p class="text-muted small">읽는 법: 판정→컬럼 수→추출 순서입니다. 에러를 숨긴 사이트는 다음 장 Blind 기법으로 넘어갑니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>addslashes·따옴표 치환 같은 땜질로 끝내는 경우. 인코딩 우회에 뚫린다. 바인딩이 정답이다.</li><li>수정 후 재시험을 생략해 우회 페이로드가 남아 있는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="web-l05-02.html">← SSRF (서버측 요청위조)</a><a class="btn btn-primary" href="web-l07-01.html">Blind SQL Injection →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

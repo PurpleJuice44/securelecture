@@ -16,9 +16,29 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>Stored / Reflected / DOM-based 차이</li><li>대표 페이로드: <img src=x onerror=alert(1)></li><li>대응: 출력 인코딩, CSP, HttpOnly 쿠키</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>Stored / Reflected / DOM-based 차이</li><li>대표 페이로드: <img src=x onerror=alert(1)></li><li>대응: 출력 인코딩, CSP, HttpOnly 쿠키</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded"><script>alert(document.cookie)</script>  (실습 환경에서만)</pre>
-<h4 class="mt-4">4. 실습</h4><p>실습 게시판에 페이로드 입력 → 동작 관찰 → 대응 코드 작성.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>Stored와 Reflected의 차이는?</li><li>CSP가 막아주는 것은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 3종 XSS 비교</h4><p>세 종류의 차이는 <strong>악성 스크립트가 어디에 머무는가</strong>입니다. Stored는 서버 DB에 저장되어 피해자마다 실행되고, Reflected는 URL에 실려 일회성으로 반사되며, DOM은 서버를 거치지 않고 브라우저 안에서 완성됩니다.</p><div class="mermaid">flowchart TD
+  A["공격자 페이로드"] --> S{"어디에 머무는가"}
+  S -->|DB 저장| ST["Stored<br/>게시글·댓글"]
+  S -->|URL 반사| RF["Reflected<br/>검색어·에러page"]
+  S -->|브라우저 내| DM["DOM-based<br/>location.hash"]
+  ST --> V["피해자 접속 시 실행"]
+  RF --> V2["링크 클릭 시 실행"]
+  DM --> V3["스크립트 싱크 도달 시 실행"]
+  V --> T["쿠키 탈취·권한 도용"]</div><p class="text-muted small">읽는 법: 저장형이 가장 파급력이 크고, DOM형이 탐지하기 가장 어렵습니다. 대응은 세 종류 모두 출력 인코딩이 기본입니다.</p><h4 class="mt-4">2-3. 대응 3종</h4><table class="table table-sm table-bordered"><tr><th>대응</th><th>막는 것</th><th>한계</th></tr><tr><td>출력 인코딩</td><td>HTML·JS 문맥 삽입</td><td>문맥별(HTML/JS/URL) 구분 적용 필요</td></tr><tr><td>CSP</td><td>인라인 스크립트 실행</td><td>정책이 느슨하면 우회 가능</td></tr><tr><td>HttpOnly 쿠키</td><td>쿠키 탈취</td><td>XSS 자체를 막지는 못함</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">&lt;script&gt;alert(document.cookie)&lt;/script&gt;  (실습 환경에서만)</pre><h4 class="mt-4">3-2. 심화 예제: 유형별 페이로드와 확인(실습 게시판)</h4><pre class="bg-light p-3 border rounded">&lt;!-- Reflected 확인용: 검색창 입력 후 URL·응답에 그대로 반사되는가 --&gt;
+&lt;img src=x onerror=alert(1)&gt;
+&lt;!-- Stored 확인용: 게시글 저장 후 다른 계정으로 접속해도 실행되는가 --&gt;
+&lt;svg onload=alert(2)&gt;
+&lt;!-- DOM 확인용: 해시값이 innerHTML로 들어가는가 --&gt;
+#visible... → location.hash 흐름 추적
+&lt;!-- 대응 확인: 인코딩 적용 후 &lt; 가 &amp;lt; 로 보이는가 --&gt;</pre><h4 class="mt-4">4. 실습</h4><ol><li>실습 게시판에 페이로드 입력 → 동작 관찰 → 대응 코드 작성.</li><li>Stored와 Reflected를 각각 재현하고 차이를 표로 정리한다.</li><li>개발자도구 Elements에서 삽입 지점의 문맥(태그 안·속성 안·스크립트 안)을 확인한다.</li><li>출력 인코딩 적용 후 페이로드가 무력화되는지 검증한다.</li><li>CSP 헤더를 추가하고 인라인 스크립트가 차단되는지 확인한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>Stored와 Reflected의 차이는?</li><li>CSP가 막아주는 것은?</li><li>DOM XSS가 서버 로그에 안 남을 수 있는 이유는?</li><li>HttpOnly가 XSS를 막지 못하는데도 쓰는 이유는?</li><li>속성 값 안(<code>&lt;input value="..."&gt;</code>)에 삽입될 때 필요한 탈출 문자는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>Stored는 서버에 저장되어 다수에게, Reflected는 URL 반사로 클릭한 당사자에게 실행된다.</li><li>허용 목록 밖 스크립트의 실행(특히 인라인)을 차단한다.</li><li>해시(#) 이후 값은 서버로 전송되지 않고 브라우저 안에서만 처리되기 때문이다.</li><li>XSS가 터져도 세션 쿠키 탈취라는 최악 경로를 차단해 피해를 줄이기 때문이다.</li><li>큰따옴표 탈출(<code>"&gt;&lt;svg...</code>)이다. 문맥을 먼저 파악해야 한다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 공격·대응 매핑</h4><div class="mermaid">sequenceDiagram
+  participant A as 공격자
+  participant S as 서버
+  participant V as 피해자
+  A->>S: 페이로드 저장·반사
+  V->>S: 페이지 요청
+  S-->>V: 스크립트 포함 응답
+  V->>V: 브라우저 실행
+  V->>A: 세션·키스트로크 유출</div><p class="text-muted small">읽는 법: 서버가 스크립트를 그대로 돌려주는 지점이 취약점, 브라우저가 실행하는 지점이 피해 발생점입니다. 인코딩은 돌려주기 전에 적용합니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li><code>&lt;script&gt;</code> 문자열만 차단하는 경우. 이벤트 핸들러·svg 등 우회 경로가 무수하다.</li><li>입력 필터만 하고 출력 인코딩을 빼먹는 경우. 방어는 출력 지점이 본진이다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="web-l04-01.html">← 파일 업로드 취약점</a><a class="btn btn-primary" href="web-l05-01.html">CSRF (사이트간 요청위조) →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

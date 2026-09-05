@@ -16,9 +16,26 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>header.payload.signature 구조</li><li>alg=none 위조, 약한 secret 브루트포스</li><li>만료 검증 누락 시 리플레이 위험</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>header.payload.signature 구조</li><li>alg=none 위조, 약한 secret 브루트포스</li><li>만료 검증 누락 시 리플레이 위험</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">jwt.io에서 토큰을 디코딩해 3부분을 구분해본다</pre>
-<h4 class="mt-4">4. 실습</h4><p>만료 시간을 변조한 토큰의 수락 여부를 테스트(실습).</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>서명 검증이 실패하면 서버가 해야 할 일은?</li><li>secret이 약하면 생기는 일은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 도장이 깨지는 순간</h4><p>JWT는 <strong>헤더·페이로드·서명</strong> 3부분의 점찍기 문자열입니다. 서버는 서명으로 위조를 가려내야 하는데, 검증 로직에 구멍이 있으면 공격자가 페이로드를 마음대로 고칩니다.</p><div class="mermaid">flowchart TD
+  T["JWT 수신"] --> A{"alg 확인"}
+  A -->|none 허용| F["서명 없이 수락<br/>치명적"]
+  A -->|RS→HS 혼동| K["공개키로 HMAC 검증<br/>위조 가능"]
+  A -->|정상| V["서명 검증"]
+  V --> E{"만료·발급자 검사"}
+  E -->|누락| R["무한 재사용"]
+  E -->|정상| OK["사용자 복원"]</div><p class="text-muted small">읽는 법: 서명 검증→클레임 검사의 2관문입니다. 어느 하나라도 비어 있으면 토큰은 종이 도장과 같습니다.</p><h4 class="mt-4">2-3. 취약점 3종</h4><table class="table table-sm table-bordered"><tr><th>취약점</th><th>원리</th><th>대응</th></tr><tr><td>alg=none</td><td>서명 생략 허용</td><td>허용 alg 화이트리스트</td></tr><tr><td>약한 secret</td><td>사전 대입으로 서명 가능</td><td>긴 난수 secret·주기 교체</td></tr><tr><td>만료 미검증</td><td>탈취 토큰 무한 재사용</td><td>exp 필수 검사+짧은 유효기간</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">jwt.io에서 토큰을 디코딩해 3부분을 구분해본다</pre><h4 class="mt-4">3-2. 심화 예제: 검증 체크리스트(실습 앱)</h4><pre class="bg-light p-3 border rounded"># 1) 3부분 분리 후 페이로드 판독
+echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null
+# 2) alg=none 변조 토큰 수락 여부 (서명부 비움)
+# header {"alg":"none"} + payload + "." 로 요청 → 200인가?
+# 3) 만료 변조: exp를 과거로 바꾼 토큰 요청 → 거부되는가?
+# 4) secret 강도: jwt-cracker 계열로 사전 대입(실습 키만)</pre><h4 class="mt-4">4. 실습</h4><ol><li>만료 시간을 변조한 토큰의 수락 여부를 테스트(실습).</li><li>alg=none 변조 토큰을 만들어 서버 반응을 기록한다.</li><li>페이로드의 role을 바꿔 권한 상승 여부를 확인한다.</li><li>서버 검증 로직(alg 목록·exp 검사)을 코드로 찾아낸다.</li><li>대응 패치 후 2·3번을 재시험한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>서명 검증이 실패하면 서버가 해야 할 일은?</li><li>secret이 약하면 생기는 일은?</li><li>JWT를 복호화하면 내용이 보이는 이유는? 암호화와 다른 점은?</li><li>만료 검사를 빼먹으면 생기는 일은?</li><li>리프레시 토큰을 쓰는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>즉시 거부(401)하고 로그를 남긴다. 부분 수락은 없다.</li><li>공격자가 secret을 맞춰 임의 페이로드에 서명해 관리자 토큰을 찍어낸다.</li><li>서명은 무결성 보장용이라 본문은 base64일 뿐 암호화가 아니기 때문이다. 민감정보를 넣으면 안 된다.</li><li>탈취된 토큰이 영원히 유효해 로그아웃·변경이 무의미해진다.</li><li>짧은 액세스 토큰+긴 리프레시로 탈취 피해를 줄이고 재발급을 통제하기 위해서이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 검증 순서</h4><div class="mermaid">sequenceDiagram
+  participant B as 브라우저
+  participant S as 서버
+  B->>S: JWT 제시
+  S->>S: alg 화이트리스트 확인
+  S->>S: 서명 검증
+  S->>S: exp·iss 검사
+  S-->>B: 사용자 복원 또는 401</div><p class="text-muted small">읽는 법: alg→서명→클레임 순서로 하나라도 실패하면 즉시 401입니다. 통과한 뒤에야 사용자 정보를 믿습니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>서명 검증 없이 페이로드를 신뢰하는 경우. sub·role은 주장일 뿐이다.</li><li>민감정보를 페이로드에 넣어 토큰 유출=정보 유출이 되는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="web-l07-01.html">← Blind SQL Injection</a><a class="btn btn-primary" href="web-l09-01.html">Burp Suite 실전 진단 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

