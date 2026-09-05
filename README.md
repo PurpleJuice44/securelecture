@@ -11,8 +11,8 @@ GitHub Pages용 정적(Static) 커리큘럼 사이트입니다. 빌드 과정 �
 | 구분 | 내용 |
 |---|---|
 | `index.html` | 전체 목차 (분야 카드 + 분야×레벨→장 표) |
-| `분야-웹.html` 등 7개 | 분야별 레벨 그룹 강의 목록 |
-| `[분야 level N] 기술.html` 75개 | 기술(장)별 개별 수업자료 |
+| `field-*.html` 7개 | 분야별 레벨 그룹 강의 목록 (예: `field-forensics.html`) |
+| `web-l*.html` 등 75개 | 기술(장)별 개별 수업자료 (예: `forensics-l00-01.html`) |
 
 - **막 = Level (난이도 0~10)**, **장 = 기술별 개별 파일**
 - 예: 웹 Level 5 → `XSS` · `CSRF` · `SSRF` 3장 분리
@@ -32,10 +32,10 @@ GitHub Pages용 정적(Static) 커리큘럼 사이트입니다. 빌드 과정 �
 
 ## 🚀 GitHub Pages 배포
 
-1. 필요한 파일만 add (`.omo/`, `.codegraph` 제외)
+1. 필요한 파일만 add (`.omo/`, `.codegraph`, `_config.yml` 제외 — Pages는 `.nojekyll`로 정적 서빙)
    ```bash
-   git add index.html README.md "분야-"*.html "[웹 "* "[리버싱 "* "[포너블 "* "[포렌식 "* "[암호학 "* "[시스템 "* "[Misc "* _config.yml
-   git commit -m "분야별 커리큘럼 83페이지"
+   git add index.html README.md .nojekyll field-*.html web-l*.html reversing-l*.html pwnable-l*.html forensics-l*.html crypto-l*.html system-l*.html misc-l*.html
+   git commit -m "ASCII 파일명으로 정규화: 한글 NFD/NFC 404 해결"
    git push
    ```
 2. 저장소 **Settings → Pages → Branch: `main`, 폴더: `/ (root)`** 선택
