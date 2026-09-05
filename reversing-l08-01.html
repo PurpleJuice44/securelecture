@@ -16,10 +16,33 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>SHA256 해시로 평판 조회(VirusTotal)</li><li>격리 VM + 스냅샷 원칙</li><li>IOC(IP·도메인·해시) 추출</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>SHA256 해시로 평판 조회(VirusTotal)</li><li>격리 VM + 스냅샷 원칙</li><li>IOC(IP·도메인·해시) 추출</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">sha256sum sample
-(평판 조회는 웹에서)</pre>
-<h4 class="mt-4">4. 실습</h4><p>IOC 3종(해시·IP·도메인)을 표로 정리한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>샌드박스를 쓰는 이유는?</li><li>IOC란?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 1차 분석 파이프라인</h4><p>1차 분석은 <strong>실행하지 않고 정체를 파악</strong>하는 단계입니다. 해시 평판→문자열·구조→샌드박스 동적 관찰 순으로, 위험한 것은 절대 손으로 실행하지 않습니다.</p><div class="mermaid">flowchart TD
+  S["샘플 입수"] --> H["SHA256 계산"]
+  H --> V["평판 조회<br/>VirusTotal 등"]
+  V --> K{"알려진 악성?"}
+  K -->|예| R["보고서·IOC 확보"]
+  K -->|아니오| ST["정적 분석<br/>strings·구조"]
+  ST --> SB["격리 샌드박스 실행"]
+  SB --> IO["IOC 추출<br/>IP·도메인·해시"]
+  IO --> RP["1차 보고서"]</div><p class="text-muted small">읽는 법: 위에서 아래로가 안전 순서입니다. 평판 조회를 건너뛰고 실행부터 하는 것은 금물입니다.</p><h4 class="mt-4">2-3. 안전 수칙표</h4><table class="table table-sm table-bordered"><tr><th>수칙</th><th>이유</th></tr><tr><td>격리 VM + 호스트 공유 금지</td><td>탈출·확산 방지</td></tr><tr><td>스냅샷 후 실행</td><td>즉시 원복</td></tr><tr><td>가짜 네트워크(격리)</td><td>C2 접속 차단</td></tr><tr><td>샘플 암호 압축 공유</td><td>오실행·유출 방지</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">sha256sum sample
+(평판 조회는 웹에서)</pre><h4 class="mt-4">3-2. 심화 예제: 1차 분석 루틴</h4><pre class="bg-light p-3 border rounded"># 1) 해시 + 평판 (실행 금지 상태에서)
+sha256sum sample.exe
+# → VirusTotal 검색창에 해시 입력
+# 2) 정적 단서 (L2 기법)
+file sample.exe
+strings -n 6 sample.exe | grep -i -E "http|cmd|powershell|temp" | head -20
+# 3) 샌드박스 제출 시 기록할 것
+# 실행 인자, 대기 시간, 네트워크 on/off, 스냅샷 이름
+# 4) IOC 정리표
+# 해시 | IP | 도메인 | 파일경로 | 레지스트리</pre><h4 class="mt-4">4. 실습</h4><ol><li>IOC 3종(해시·IP·도메인)을 표로 정리한다.</li><li>평판 조회 결과를 저장하고 탐지명을 기록한다.</li><li>정적 단서 5개를 뽑아 우선순위를 매긴다.</li><li>샌드박스 실행 계획을 체크리스트로 작성한다.</li><li>1차 보고서를 half-page로 요약한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>샌드박스를 쓰는 이유는?</li><li>IOC란?</li><li>평판 조회를 먼저 하는 이유는?</li><li>스냅샷이 필요한 이유는?</li><li>1차 분석에서 하지 말아야 할 것은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>감염·확산 없이 행위를 관찰하는 격리 실행 환경이 필요하기 때문이다.</li><li>침해 지표. 해시·IP·도메인 등 탐지·차단에 쓰는 단서이다.</li><li>알려진 악성이면 위험한 실행 없이 보고서·IOC를 바로 확보하기 위해서이다.</li><li>오염된 환경을 즉시 되돌리기 위해서이다.</li><li>본인 PC·실망에서 직접 실행, 네트워크 연결 상태 방치이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 안전 절차</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant V as 격리 VM
+  participant N as 격리 네트워크
+  A->>V: 스냅샷 생성
+  A->>V: 샘플 반입 (암호 압축)
+  V->>N: 통신 차단 확인
+  V-->>A: 행위 로그 수집
+  A->>V: 스냅샷 복원</div><p class="text-muted small">읽는 법: 스냅샷으로 시작해 스냅샷으로 끝납니다. 실행 전후 환경이 동일해야 다음 분석이 유효합니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>회사·학교 망에 연결된 채로 샘플을 실행하는 경우. 격리가 원칙이다.</li><li>평판 사이트에 내부 파일명을 그대로 올려 정보가 새는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="reversing-l07-01.html">← 안티 디버깅</a><a class="btn btn-primary" href="reversing-l09-01.html">실전 crackme 풀이 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

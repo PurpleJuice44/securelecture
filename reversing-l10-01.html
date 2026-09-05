@@ -16,10 +16,24 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>대상 선정(실습용 crackme)</li><li>분석 과정 기록(캡처 포함)</li><li>대응·완화방안 제언</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>대상 선정(실습용 crackme)</li><li>분석 과정 기록(캡처 포함)</li><li>대응·완화방안 제언</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">보고서: 개요 → 분석환경 → 상세분석 → 결론</pre>
-<h4 class="mt-4">4. 실습</h4><p>분석 보고서 1건을 위 목차로 작성한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>보고서에 반드시 들어갈 것은?</li><li>합법 범위 준수의 의미는?</li></ol>
-<div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="reversing-l09-01.html">← 실전 crackme 풀이</a></div></main>
+<h4 class="mt-4">2-2. 동작 원리 심화: 포트폴리오 보고서 구조</h4><p>프로젝트 보고서는 <strong>따라 하면 같은 결론에 닿는 문서</strong>입니다. 환경→방법→발견→대응의 4기둥에 증거(캡처·해시)를 붙입니다.</p><div class="mermaid">flowchart TD
+  T["대상 선정<br/>실습 crackme"] --> E["환경 기록<br/>OS·도구 버전"]
+  E --> M["방법<br/>정적→동적 순서"]
+  M --> F["발견<br/>분기·로직·근거"]
+  F --> C["대응 제언<br/>완화방안"]
+  C --> A["부록<br/>해시·스크립트"]</div><p class="text-muted small">읽는 법: 위에서 아래로가 보고서 목차입니다. 환경이 빠지면 재현이 불가해 보고서 가치가 반감합니다.</p><h4 class="mt-4">2-3. 평가 관점표</h4><table class="table table-sm table-bordered"><tr><th>관점</th><th>좋은 보고서</th><th>나쁜 보고서</th></tr><tr><td>재현성</td><td>명령·출력 그대로</td><td>결과만 있고 과정 없음</td></tr><tr><td>근거</td><td>주소·값 명시</td><td>느낌 서술</td></tr><tr><td>윤리</td><td>실습 범위 명시</td><td>출처·범위 불명</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">보고서: 개요 → 분석환경 → 상세분석 → 결론</pre><h4 class="mt-4">3-2. 심화 예제: 목차별 작성 포인트</h4><pre class="bg-light p-3 border rounded"># 개요: 대상·목적·범위를 5줄로 (실습용 crackme 명시)
+# 분석환경: OS, gdb/Ghidra 버전, 대상 해시값
+sha256sum crackme
+# 상세분석: 단계별 명령+출력+해석 (캡처 첨부)
+# 결론: 핵심 로직 3줄 요약 + 완화방안(난독화·무결성 검사 등)
+// 대응 제언 예시: 정답 하드코딩 금지, 서버 검증으로 이전</pre><h4 class="mt-4">4. 실습</h4><ol><li>분석 보고서 1건을 위 목차로 작성한다.</li><li>환경 섹션에 도구 버전·대상 해시를 포함한다.</li><li>상세분석의 각 주장에 주소·값을 붙인다.</li><li>대응 제언을 개발자 관점에서 3개 적는다.</li><li>동료가 재현해보고 피드백을 받는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>보고서에 반드시 들어갈 것은?</li><li>합법 범위 준수의 의미는?</li><li>환경 기록이 필요한 이유는?</li><li>좋은 대응 제언의 조건은?</li><li>포트폴리오에 싣기 전 확인할 것은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>환경·재현 가능한 과정·근거·결론이다.</li><li>실습용 대상·허가된 범위에서만 분석하고 상용 보호를 건드리지 않는 것이다.</li><li>버전·환경이 다르면 결과가 달라져 재현이 불가하기 때문이다.</li><li>구체적이고 실행 가능하며, 개발 비용을 고려한 것이다.</li><li>민감정보·무단 대상 포함 여부와 재현 가능성이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 마무리 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 작성자
+  participant R as 검토자
+  participant P as 포트폴리오
+  A->>R: 초안 제출
+  R-->>A: 재현·근거 보완 요청
+  A->>R: 수정본 제출
+  R-->>P: 공개 승인</div><p class="text-muted small">읽는 법: 검토는 문장이 아니라 재현 가능성을 봅니다. 남이 따라 해서 같은 결론이면 합격입니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>캡처만 잔뜩 붙이고 명령·해석이 없는 경우</li><li>실습 범위를 명시하지 않아 오해를 사는 경우</li></ul><div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="reversing-l09-01.html">← 실전 crackme 풀이</a><a class="btn btn-outline-secondary" href="field-reversing.html">분야 목차 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><button id="toTop" class="btn btn-dark rounded-circle" title="맨 위로">↑</button><script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:"base",securityLevel:"loose"});var t=document.getElementById("toTop");window.addEventListener("scroll",function(){t.style.display=window.scrollY>400?"block":"none"});t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});</script></body></html>

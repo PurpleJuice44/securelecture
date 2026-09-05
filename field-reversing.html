@@ -10,6 +10,29 @@
 <main class="col-lg-9 col-md-8 p-4"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">목차</a></li>
 <li class="breadcrumb-item active">🔍 리버싱</li></ol></nav>
 <h1>🔍 리버싱</h1><p class="lead">바이너리를 읽는 눈. 어셈블리부터 crackme까지.</p>
+<h3 class="mt-4">분야 아키텍처: 바이너리를 여는 두 개의 눈</h3><p>리버싱은 실행하지 않고 읽는 <strong>정적 분석</strong>과 실행하며 관찰하는 <strong>동적 분석</strong>의 쌍안경입니다. 두 눈이 합쳐질 때 보호막(패킹·안티디버깅)이 벗겨집니다.</p>
+<div class="mermaid">flowchart TD
+  B["대상 바이너리<br/>ELF·PE"] --> S["정적 분석<br/>strings·objdump·역어셈블"]
+  B --> D["동적 분석<br/>gdb·strace·디버거"]
+  S --> ST["구조 파악<br/>함수·문자열·호출관계"]
+  D --> DY["행위 관찰<br/>레지스터·메모리·syscall"]
+  ST --> P["보호막 식별<br/>UPX·안티디버깅"]
+  DY --> P
+  P --> U["언패킹·우회"]
+  U --> C["crackme 풀이<br/>로직 복원·패치"]</div>
+<p class="text-muted small">읽는 법: 위에서 아래로가 분석 순서입니다. 정적과 동적은 번갈아 수행하며 서로의 가설을 검증합니다.</p>
+<h3 class="mt-4">학습 로드맵</h3><p>숫자 읽기에서 시작해 CPU 동작을 이해하고, 도구를 거쳐 보호막을 벗긴 뒤 실전 crackme로 마무리합니다.</p>
+<div class="mermaid">flowchart LR
+  R0["L0 수와 어셈블리"] --> R1["L1 레지스터·스택"]
+  R1 --> R2["L2 정적 분석 도구"]
+  R2 --> R3["L3 동적 분석 gdb"]
+  R3 --> R4["L4 crackme 패치"]
+  R4 --> R6["L6 UPX 패킹"]
+  R6 --> R7["L7 안티디버깅"]
+  R7 --> R8["L8 악성코드 1차 분석"]
+  R8 --> R9["L9 실전 crackme"]
+  R9 --> R10["L10 리버싱 프로젝트"]</div>
+<p class="text-muted small">읽는 법: 왼쪽부터 순서대로 학습하세요. L2와 L3은 짝을 이뤄 서로를 보완합니다.</p>
 <p><span class="badge text-bg-warning">총 10장</span> <span class="badge text-bg-light text-dark border">Level = 막(難易度) · 장 = 기술</span></p>
 <h4 class="mt-4"><span class="badge text-bg-secondary">Level 0</span></h4><div class="row g-3"><div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
 <h6 class="card-title">수와 어셈블리 맛보기</h6><p class="card-text small text-muted">2진/16진과 어셈블리 3개 명령을 읽을 수 있다.</p>

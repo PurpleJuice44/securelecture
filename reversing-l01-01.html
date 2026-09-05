@@ -16,9 +16,32 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>eax·ebx(데이터), esp(스택탑), eip(다음명령)</li><li>push(쌓기)/pop(꺼내기), LIFO</li><li>call은 주소 저장 후 점프, ret은 복귀</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>eax·ebx(데이터), esp(스택탑), eip(다음명령)</li><li>push(쌓기)/pop(꺼내기), LIFO</li><li>call은 주소 저장 후 점프, ret은 복귀</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">push ebp / mov ebp, esp / ... / leave / ret</pre>
-<h4 class="mt-4">4. 실습</h4><p>그림으로 push 2번 후 esp 위치를 표시해본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>스택이 LIFO인 이유는?</li><li>ret이 하는 일은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 함수 호출의 전말</h4><p>함수를 부르면 <strong>돌아올 주소 저장→점프→작업→복귀</strong>가 일어납니다. 스택은 이 과정을 받치는 접시 더미입니다. <code>push</code>는 쌓고, <code>pop</code>은 꺼내고, <code>call</code>은 주소를 저장한 뒤 점프하고, <code>ret</code>은 저장된 주소로 돌아갑니다.</p><div class="mermaid">flowchart TD
+  C["call func<br/>돌아올 주소 push"] --> J["func로 점프<br/>eip 변경"]
+  J --> P["프롤로그<br/>push ebp·mov ebp esp"]
+  P --> W["함수 본체<br/>지역변수 사용"]
+  W --> E["에필로그<br/>leave"]
+  E --> R["ret<br/>저장된 주소로 복귀"]</div><p class="text-muted small">읽는 법: call과 ret이 짝을 이룹니다. 스택에 쌓인 복귀 주소를 덮어쓰는 것이 포너블(BOF)의 출발점입니다.</p><h4 class="mt-4">2-3. 레지스터 역할표</h4><table class="table table-sm table-bordered"><tr><th>레지스터</th><th>별명</th><th>역할</th></tr><tr><td>eax·ebx·ecx·edx</td><td>범용</td><td>계산·인자·반환값</td></tr><tr><td>esp</td><td>스택 포인터</td><td>스택 꼭대기 추적</td></tr><tr><td>ebp</td><td>베이스 포인터</td><td>현재 함수 기준점</td></tr><tr><td>eip</td><td>명령 포인터</td><td>다음 실행 명령</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">push ebp / mov ebp, esp / ... / leave / ret</pre><h4 class="mt-4">3-2. 심화 예제: 스택 그림 그리기</h4><pre class="bg-light p-3 border rounded">; 초기 esp=0x1000 (아래가 높은 주소)
+push 0x41          ; [0xFFC]=0x41, esp=0xFFC
+push 0x42          ; [0xFF8]=0x42, esp=0xFF8
+call func          ; [0xFF4]=돌아올주소, esp=0xFF4, eip=func
+; func 내부
+push ebp           ; 이전 ebp 보관
+mov ebp, esp       ; 새 기준점 확정
+; ... 함수 본체 ...
+leave              ; mov esp,ebp + pop ebp
+ret                ; 저장된 주소로 복귀</pre><h4 class="mt-4">4. 실습</h4><ol><li>그림으로 push 2번 후 esp 위치를 표시해본다.</li><li><code>call</code> 전후의 esp·eip 변화를 표로 적는다.</li><li>프롤로그 2줄이 하는 일을 한 줄씩 설명한다.</li><li><code>leave</code>를 풀어쓰면(push·mov·pop) 어떻게 되는지 적는다.</li><li>스택 그림에서 복귀 주소 칸을 표시한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>스택이 LIFO인 이유는?</li><li>ret이 하는 일은?</li><li><code>call</code>이 스택에 저장하는 값은?</li><li>ebp가 필요한 이유는?</li><li>esp가 가리키는 곳은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>함수 호출·복귀가 나중에 들어간 것부터 꺼내는 순서와 일치하기 때문이다.</li><li>스택 꼭대기의 복귀 주소를 꺼내 eip에 넣어 돌아간다.</li><li>call 다음 명령의 주소(돌아올 주소)이다.</li><li>esp가 변해도 지역변수·인자를 고정 위치로 참조하기 위해서이다.</li><li>스택의 꼭대기(가장 최근에 쌓인 값)이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 호출 규약</h4><div class="mermaid">sequenceDiagram
+  participant M as main
+  participant S as 스택
+  participant F as func
+  M->>S: 인자 push
+  M->>S: 복귀 주소 push (call)
+  M->>F: 점프
+  F->>S: ebp 보관·기준점 확정
+  F->>F: 본체 실행
+  F->>S: ebp 복원 (leave)
+  S-->>F: 복귀 주소 반환 (ret)
+  F->>M: 복귀</div><p class="text-muted small">읽는 법: 스택이 중개자입니다. 이 중개 과정을 눈으로 좇을 수 있으면 어셈블리의 절반은 읽은 셈입니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>스택이 위로 자란다고 착각하는 경우. x86 스택은 아래(낮은 주소)로 자란다.</li><li><code>pop</code>이 값을 지운다고 생각하는 경우. 꺼낼 뿐 메모리는 그대로 남는다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="reversing-l00-01.html">← 수와 어셈블리 맛보기</a><a class="btn btn-primary" href="reversing-l02-01.html">정적 분석 도구 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

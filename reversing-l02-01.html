@@ -16,10 +16,31 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>file·strings로 1차 정보 수집</li><li>Ghidra로 디컴파일 읽기</li><li>의심 문자열(URL·비밀번호) 추출</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>file·strings로 1차 정보 수집</li><li>Ghidra로 디컴파일 읽기</li><li>의심 문자열(URL·비밀번호) 추출</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">file a.out
-strings a.out | grep -i 'pass\|http' | head</pre>
-<h4 class="mt-4">4. 실습</h4><p>실습 바이너리에서 URL 3개를 추출한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>strings의 용도는?</li><li>정적분석의 한계는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 실행 없이 읽는 순서</h4><p>정적 분석은 <strong>겉→속 순서</strong>로 파고듭니다. 파일 형식 확인→문자열 긁기→심볼·섹션 구조→디컴파일 순이며, 앞 단계에서 단서가 나오면 뒤를 깊게 팝니다.</p><div class="mermaid">flowchart TD
+  F["file 명령<br/>형식·아키텍처"] --> S["strings<br/>URL·비밀번호·에러문구"]
+  S --> Y["심볼·섹션<br/>nm·readelf·함수 목록"]
+  Y --> G["Ghidra 디컴파일<br/>C 유사코드"]
+  G --> J{"핵심 로직 발견?"}
+  J -->|예| D["동적 분석으로 검증<br/>L3로 이동"]
+  J -->|아니오| P["패킹 의심<br/>L6으로 이동"]</div><p class="text-muted small">읽는 법: 위에서 아래로가 표준 동선입니다. strings가 비어 있으면 패킹을, 함수가 보이면 동적 검증을 의심합니다.</p><h4 class="mt-4">2-3. 도구별 역할</h4><table class="table table-sm table-bordered"><tr><th>도구</th><th>보는 것</th><th>명령 예시</th></tr><tr><td>file</td><td>형식·아키텍처</td><td><code>file a.out</code></td></tr><tr><td>strings</td><td>평문 단서</td><td><code>strings -n 6 a.out</code></td></tr><tr><td>nm·readelf</td><td>심볼·섹션</td><td><code>nm -D a.out</code></td></tr><tr><td>objdump</td><td>역어셈블</td><td><code>objdump -d -M intel a.out</code></td></tr><tr><td>Ghidra</td><td>디컴파일</td><td>CodeBrowser 임포트</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">file a.out
+strings a.out | grep -i 'pass\|http' | head</pre><h4 class="mt-4">3-2. 심화 예제: 5분 트리아지</h4><pre class="bg-light p-3 border rounded"># 1) 정체 파악 (10초)
+file crackme && checksec --file=crackme 2>/dev/null
+# 2) 문자열 단서 (1분)
+strings -n 6 crackme | grep -i -E "pass|flag|http|fail|success| Congrat" | head -20
+# 3) 심볼·호출관계 (1분)
+nm -D crackme | head -20
+objdump -d -M intel crackme | grep -E "call.*(strcmp|scanf|printf)" | head
+# 4) 의심 함수만 Ghidra로 (2분)</pre><h4 class="mt-4">4. 실습</h4><ol><li>실습 바이너리에서 URL 3개를 추출한다.</li><li>성공·실패 메시지를 찾아 비교 함수 후보를 좁힌다.</li><li>호출된 비교 함수(scanf·strcmp 계열) 목록을 적는다.</li><li>Ghidra에 올려 의심 함수 1개를 디컴파일로 읽는다.</li><li>정적 가설 1줄을 적고 L3에서 검증할 포인트를 정한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>strings의 용도는?</li><li>정적분석의 한계는?</li><li>strings 결과가 텅 비면 의심하는 것은?</li><li><code>checksec</code>이 보여주는 보호기법 3가지는?</li><li>정적 가설을 동적으로 검증해야 하는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>바이너리 속 평문(문자열)을 뽑아 URL·메시지 등 단서를 찾는 것이다.</li><li>실행하지 않으므로 패킹·난독화·실행 시 복호화 구간은 보이지 않는다.</li><li>패킹·암호화를 의심하고 언패킹(L6)으로 분기한다.</li><li>NX·Canary·PIE(ASLR) 등이다.</li><li>정적 추론은 가설일 뿐, 실제 분기를 타는지 실행으로 확인해야 하기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 트리아지 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant F as file·strings
+  participant O as objdump
+  participant G as Ghidra
+  A->>F: 1차 수집
+  F-->>A: 형식·단서
+  A->>O: 의심 함수 역어셈블
+  O-->>A: 분기 구조
+  A->>G: 핵심 함수 디컴파일
+  G-->>A: 로직 가설</div><p class="text-muted small">읽는 법: 가벼운 도구에서 무거운 도구 순서입니다. Ghidra는 마지막에, 그것도 의심 함수만 봅니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>바이너리 전체를 Ghidra로 읽으려다 길을 잃는 경우. strings로 좁힌 뒤 본다.</li><li>스트립된 바이너리에서 함수명을 믿는 경우. 주소·호출관계로 식별한다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="reversing-l01-01.html">← x86 레지스터와 스택</a><a class="btn btn-primary" href="reversing-l03-01.html">동적 분석 (gdb) →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

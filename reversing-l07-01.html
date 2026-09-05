@@ -16,9 +16,30 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>IsDebuggerPresent / ptrace 탐지</li><li>타이밍 체크, 예외 이용</li><li>우회는 실습 crackme 범위에서만</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>IsDebuggerPresent / ptrace 탐지</li><li>타이밍 체크, 예외 이용</li><li>우회는 실습 crackme 범위에서만</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">ptrace(PTRACE_TRACEME) 호출 탐지 (개념)</pre>
-<h4 class="mt-4">4. 실습</h4><p>탐지 함수 호출부를 찾아 기록한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>안티디버깅의 목적은?</li><li>우회 시 주의할 점은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 탐지 vs 우회의 줄다리기</h4><p>안티디버깅은 <strong>디버거의 흔적</strong>을 노립니다. 디버거가 붙으면 프로세스 플래그·타이밍·예외 처리 양상이 달라지므로, 프로그램이 이를 검사해 행동을 바꿉니다. 분석가는 탐지 지점을 찾아 무력화합니다(실습 crackme 범위).</p><div class="mermaid">flowchart TD
+  P["프로그램 시작"] --> C{"디버거 붙었나?"}
+  C -->|IsDebuggerPresent| F1["종료·오작동"]
+  C -->|ptrace 자가점유| F2["디버거 진입 차단"]
+  C -->|타이밍 편차| F3["가짜 경로 실행"]
+  C -->|없음| N["정상 실행"]
+  A["분석가"] --> B["탐지 호출 탐색"]
+  B --> U["NOP 패치·후킹 우회"]</div><p class="text-muted small">읽는 법: 프로그램은 매 실행마다 검문소를 세웁니다. 분석가는 검문소 위치를 지도에 표시한 뒤 하나씩 무력화합니다.</p><h4 class="mt-4">2-3. 탐지 기법표</h4><table class="table table-sm table-bordered"><tr><th>기법</th><th>원리</th><th>대응 개념</th></tr><tr><td>IsDebuggerPresent</td><td>PEB 플래그 확인</td><td>플래그 조작·후킹</td></tr><tr><td>ptrace 자가점유</td><td>이미 추적 중이면 실패</td><td>호출 무력화(LD_PRELOAD 등)</td></tr><tr><td>타이밍 체크</td><td>디버깅 시 지연 발생</td><td>시간 조작·조건 패치</td></tr><tr><td>예외 이용</td><td>디버거가 예외를 가로챔</td><td>예외 핸들러 추적</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">ptrace(PTRACE_TRACEME) 호출 탐지 (개념)</pre><h4 class="mt-4">3-2. 심화 예제: 탐지 지점 찾기(실습 crackme)</h4><pre class="bg-light p-3 border rounded"># 1) 의심 심볼·문자열 탐색
+nm crackme | grep -i -E "ptrace|debug"
+strings crackme | grep -i -E "debug|trace|gdb"
+# 2) strace로 ptrace 호출 관찰
+strace -e ptrace ./crackme 2>&1 | head
+# 3) gdb에서 탐지 함수에 브레이크 후 반환값 조작 개념
+# (gdb) b ptrace
+# (gdb) r
+# (gdb) return 0     ← 탐지 무력화 개념 (실습 범위)</pre><h4 class="mt-4">4. 실습</h4><ol><li>탐지 함수 호출부를 찾아 기록한다.</li><li>strace로 탐지 호출 시점을 관찰한다.</li><li>탐지 전후의 분기를 표로 정리한다.</li><li>우회 후 정상 경로 진입을 확인한다(실습 crackme).</li><li>탐지→우회 과정을 순서도로 그린다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>안티디버깅의 목적은?</li><li>우회 시 주의할 점은?</li><li>ptrace 자가점유가 탐지가 되는 이유는?</li><li>타이밍 체크의 한계는?</li><li>실습 범위를 벗어난 우회가 문제인 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>분석·디버깅을 방해해 해석을 늦추는 것이다.</li><li>실습용 crackme 범위를 벗어나지 않는다. 상용 보호 해제는 불법이다.</li><li>한 프로세스는 하나의 추적자만 허용되므로, 자가점유 성공 여부가 디버거 유무를 드러내기 때문이다.</li><li>고성능·가상화 환경에서도 지연이 생겨 오탐이 나기 때문이다.</li><li>저작권 보호 무력화 등 법 위반 소지가 있기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 탐지·우회 대결</h4><div class="mermaid">sequenceDiagram
+  participant P as 프로그램
+  participant D as 디버거 유무
+  participant A as 분석가
+  P->>D: 탐지 검사
+  D-->>P: 흔적 반환
+  P->>P: 분기 결정
+  A->>P: 탐지 지점 특정
+  A->>P: 무력화 후 재실행</div><p class="text-muted small">읽는 법: 검사→분기→무력화의 반복입니다. 한 겹을 벗기면 다음 겹이 나오므로 지도를 그리며 진행합니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>탐지를 악성으로 단정하는 경우. 정상 소프트웨어의 보호막일 수 있다.</li><li>우회에만 집중해 원래 로직 분석을 놓치는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="reversing-l06-01.html">← UPX 패킹 분석</a><a class="btn btn-primary" href="reversing-l08-01.html">악성코드 1차 분석 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

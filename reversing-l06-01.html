@@ -16,9 +16,31 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>패킹=압축+실행시 복원, OEP 개념</li><li>upx -d 로 실습파일 언패킹</li><li>패킹된 파일의 strings 특징(적음)</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>패킹=압축+실행시 복원, OEP 개념</li><li>upx -d 로 실습파일 언패킹</li><li>패킹된 파일의 strings 특징(적음)</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">upx -d packed.exe -o unpacked.exe</pre>
-<h4 class="mt-4">4. 실습</h4><p>패킹 전/후 strings 개수를 비교한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>OEP란?</li><li>패킹 탐지 단서는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 포장지를 벗기는 과정</h4><p>패커는 원본 코드를 압축해 <strong>복원 스텁</strong>과 함께 묶습니다. 실행되면 스텁이 메모리에 원본을 풀고 <strong>OEP(원래 진입점)</strong>로 점프합니다. 분석은 OEP를 찾아 메모리 덤프를 뜨는 것이 핵심입니다.</p><div class="mermaid">flowchart TD
+  O["원본 실행파일"] --> P["패킹<br/>압축+스텁 부착"]
+  P --> X["실행 시작<br/>스텁 진입점"]
+  X --> U["메모리 복원<br/>원본 압축 해제"]
+  U --> J["OEP 점프<br/>원래 코드 시작"]
+  J --> R["정상 실행"]
+  A["분석가"] --> D["OEP에서 덤프<br/>언패킹"]</div><p class="text-muted small">읽는 법: 실행 흐름은 스텁→복원→OEP 순입니다. 분석가는 OEP 순간을 낚아채 덤프합니다.</p><h4 class="mt-4">2-3. 패킹 탐지 단서</h4><table class="table table-sm table-bordered"><tr><th>단서</th><th>정상</th><th>패킹 의심</th></tr><tr><td>strings 개수</td><td>수백 개</td><td>수십 개 이하</td></tr><tr><td>섹션 이름</td><td>.text·.data</td><td>UPX0·UPX1 등</td></tr><tr><td>엔트로피</td><td>5~6</td><td>7.5 이상</td></tr><tr><td>임포트</td><td>다양함</td><td>LoadLibrary·GetProcAddress 위주</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">upx -d packed.exe -o unpacked.exe</pre><h4 class="mt-4">3-2. 심화 예제: 패킹 전후 비교(실습 파일)</h4><pre class="bg-light p-3 border rounded"># 1) 패킹 전 기준선
+file original && strings original | wc -l
+readelf -S original | head -15
+# 2) 패킹 (실습 파일에만!)
+upx original -o packed
+# 3) 패킹 후 비교
+file packed && strings packed | wc -l
+readelf -S packed | grep -i upx
+# 4) 언패킹 후 동등성 확인
+upx -d packed -o unpacked
+cmp <(strings original | sort) <(strings unpacked | sort) && echo "복원 일치"</pre><h4 class="mt-4">4. 실습</h4><ol><li>패킹 전/후 strings 개수를 비교한다.</li><li>섹션 이름과 엔트로피 변화를 기록한다.</li><li><code>upx -d</code>로 복원하고 문자열이 돌아오는지 확인한다.</li><li>UPX 외 패커 식별법(PEiD·DIEC 개념)을 조사한다.</li><li>수동 언패킹 개념(OEP 브레이크→덤프)을 순서도로 그린다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>OEP란?</li><li>패킹 탐지 단서는?</li><li>스텁의 역할은?</li><li>언패킹 후 반드시 하는 검증은?</li><li>strings가 비었다고 무조건 패킹인가? 다른 경우는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>Original Entry Point. 패킹 전 원본 코드의 시작 주소이다.</li><li>strings 급감, UPX 섹션명, 높은 엔트로피, 적은 임포트이다.</li><li>실행 시 원본을 메모리에 복원하고 OEP로 점프하는 것이다.</li><li>원본과 동등한지(문자열·동작) 대조하는 것이다.</li><li>아니다. 스트립·난독화도 가능하다. 여러 단서를 종합한다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 수동 언패킹</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant D as 디버거
+  participant M as 메모리
+  A->>D: 스텁 진입점에 정지
+  D->>M: 단계 실행하며 복원 관찰
+  M-->>D: OEP 점프 순간 포착
+  D->>D: 프로세스 덤프
+  D-->>A: 언패킹 파일 확보</div><p class="text-muted small">읽는 법: OEP로 점프하는 바로 그 순간이 덤프 타이밍입니다. 점프 후 한 칸이 골든타임입니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>패킹=악성코드로 단정하는 경우. 정상 소프트웨어도 용량·보호 목적으로 패킹한다.</li><li>언패킹 파일을 원본처럼 신뢰하는 경우. 덤프는 복원본이라 IAT 재구축 등이 필요할 수 있다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="reversing-l04-01.html">← crackme 패치 분석</a><a class="btn btn-primary" href="reversing-l07-01.html">안티 디버깅 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
