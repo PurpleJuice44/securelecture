@@ -16,9 +16,20 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>auth.log: Failed password 집계</li><li>access.log: 스캔·SQLi 패턴</li><li>시간대 정렬이 핵심</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>auth.log: Failed password 집계</li><li>access.log: 스캔·SQLi 패턴</li><li>시간대 정렬이 핵심</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">grep 'Failed password' auth.log | cut -d' ' -f11 | sort | uniq -c | sort -nr</pre>
-<h4 class="mt-4">4. 실습</h4><p>Top 공격 IP 5개를 뽑아본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>무차별대입 탐지 지표는?</li><li>SQLi 패턴 예시는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 로그 상관분석</h4><p>단일 로그만 보면 공격의 절반만 보입니다. 인증 로그의 실패, 웹 로그의 페이로드, 방화벽 로그의 차단이 <strong>같은 시간대·같은 IP</strong>로 묶일 때 비로소 공격 시나리오가 완성됩니다.</p><div class="mermaid">flowchart TD
+  A["auth.log<br/>Failed password 급증"] --> T["시간대 정렬<br/>UTC·타임존 통일"]
+  W["access.log<br/>스캔·SQLi 흔적"] --> T
+  F["방화벽·IDS 로그"] --> T
+  T --> IP["공격 IP 그룹핑<br/>횟수·기간 집계"]
+  IP --> SC["시나리오 재구성<br/>정찰→침투→확대"]
+  SC --> IOC["IOC 추출<br/>IP·URL·해시"]</div><p class="text-muted small">읽는 법: 서로 다른 로그를 시간축 하나로 정렬한 뒤 IP 기준으로 묶으면, 분산된 흔적이 하나의 공격 이야기로 합쳐집니다.</p><h4 class="mt-4">2-3. 탐지 패턴 표</h4><table class="table table-sm table-bordered"><tr><th>공격</th><th>로그 지표</th><th>판단 기준 예시</th></tr><tr><td>무차별대입</td><td>Failed password 반복</td><td>5분 내 20회 이상, 다수 계정 대상</td></tr><tr><td>디렉토리 스캔</td><td>404 집중 + 비정상 경로</td><td>단일 IP에서 수백 개 404</td></tr><tr><td>SQLi 시도</td><td><code>UNION SELECT</code>·<code>' OR '1'='1</code></td><td>URL 디코딩 후 탐지</td></tr><tr><td>웹셸 접근</td><td>낯선 php 경로의 200 + POST 반복</td><td>업로드 시점과 연계 확인</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">grep 'Failed password' auth.log | cut -d' ' -f11 | sort | uniq -c | sort -nr</pre><h4 class="mt-4">3-2. 심화 예제</h4><pre class="bg-light p-3 border rounded"># 1) 공격 IP Top 10 (실패 로그인 기준)
+grep 'Failed password' auth.log | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort | uniq -c | sort -nr | head
+# 2) 웹 로그에서 스캔 흔적 (404 집중 IP)
+awk '$9==404 {print $1}' access.log | sort | uniq -c | sort -nr | head
+# 3) SQLi 의심 요청 (URL 디코딩 후 탐지)
+grep -i -E "union(%20| )select|' or '" access.log | head
+# 4) 시간대 정렬 (공격 IP의 행위 순서 재구성)
+grep '203.0.113.7' access.log auth.log | sort -t' ' -k4</pre><h4 class="mt-4">4. 실습</h4><ol><li>Top 공격 IP 5개를 뽑고 국가·ASN을 조회해 기록한다.</li><li>해당 IP의 첫 요청~마지막 요청 시각으로 공격 지속 시간을 구한다.</li><li>404 집중 경로 10개를 뽑아 스캔 도구 지문을 추정한다.</li><li>SQLi 패턴 매칭 전 URL 디코딩(<code>python3 -c urllib</code>)이 필요한 이유를 확인한다.</li><li>정찰→침투→확대 3단계로 시나리오를 재구성해 한 페이지로 정리한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>무차별대입 탐지 지표는?</li><li>SQLi 패턴 예시는?</li><li>로그 분석 전 타임존을 통일해야 하는 이유는?</li><li>정상 크롤러와 악성 스캔을 구분하는 방법은?</li><li>웹셸 접근을 의심할 로그 패턴은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>짧은 시간 내 동일 IP의 반복 Failed password, 다수 계정 대상 시도이다.</li><li><code>' OR '1'='1</code>, <code>UNION SELECT</code> 등이다. 인코딩 우회까지 고려한다.</li><li>서버마다 기록 기준이 달라 정렬이 어긋나면 인과관계가 뒤집히기 때문이다.</li><li>User-Agent·요청 간격·robots.txt 준수 여부와 404 비율을 함께 본다.</li><li>낯선 경로 php 파일에 대한 200 응답과 POST 반복, 업로드 시점과의 연계이다.</li></ol></details><h4 class="mt-4">6. 흔한 실수</h4><ul><li>인코딩된 페이로드를 디코딩 없이 grep해 탐지를 놓치는 경우</li><li>로그 순환(logrotate)으로 잘린 구간의 공백을 공격 종료로 오판하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="forensics-l03-01.html">← 디스크 이미징</a><a class="btn btn-primary" href="forensics-l05-01.html">메모리 포렌식 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

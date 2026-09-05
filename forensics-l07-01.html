@@ -16,10 +16,22 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>binwalk로 첨부파일 탐지</li><li>zsteg/steghide로 LSB 검사</li><li>끝에 덧붙은(zip) 데이터 확인</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>binwalk로 첨부파일 탐지</li><li>zsteg/steghide로 LSB 검사</li><li>끝에 덧붙은(zip) 데이터 확인</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">binwalk -e secret.png
-zsteg secret.png | head</pre>
-<h4 class="mt-4">4. 실습</h4><p>숨은 문자열 1개를 추출한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>LSB 삽입이란?</li><li>binwalk의 용도는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 은닉 기법 3종</h4><p>스테가노그래피는 <strong>덧붙이기·끼워넣기·바꾸기</strong>로 나뉩니다. 덧붙이기는 파일 끝에 데이터를 붙이는 단순 수법, 끼워넣기는 컨테이너 사이 빈틈을 쓰는 수법, 바꾸기는 픽셀 최하위 비트(LSB)를 살짝 고쳐 정보를 심는 수법입니다.</p><div class="mermaid">flowchart TD
+  F["이미지 입수"] --> S["크기·형식 이상 확인<br/>푸터 이후 데이터?"]
+  S --> B["binwalk 스캔<br/>덧붙은 파일 탐지"]
+  B --> Z["zsteg·steghide<br/>LSB 평면 검사"]
+  Z --> E{"추출물 존재?"}
+  E -->|예| D["추출·복호<br/>패스워드 사전 대입"]
+  E -->|아니오| A["통계 분석<br/>chi-square·RS"]</div><p class="text-muted small">읽는 법: 쉬운 것부터 순서대로 시도합니다. 덧붙이기가 가장 흔하므로 binwalk를 먼저, 그 다음 LSB 도구를 씁니다.</p><h4 class="mt-4">2-3. 도구별 역할</h4><table class="table table-sm table-bordered"><tr><th>도구</th><th>찾는 것</th><th>명령 예시</th></tr><tr><td>binwalk</td><td>덧붙은 파일·펌웨어</td><td><code>binwalk -e img.png</code></td></tr><tr><td>zsteg</td><td>PNG LSB 평면</td><td><code>zsteg -a img.png</code></td></tr><tr><td>steghide</td><td>JPEG/BMP 은닉+암호</td><td><code>steghide extract -sf img.jpg</code></td></tr><tr><td>strings</td><td>평문 플래그·URL</td><td><code>strings -n 8 img.png</code></td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">binwalk -e secret.png
+zsteg secret.png | head</pre><h4 class="mt-4">3-2. 심화 예제</h4><pre class="bg-light p-3 border rounded"># 1) 덧붙은 데이터 확인 (푸터 이후 바이트)
+binwalk secret.png
+xxd secret.png | tail -3
+# 2) LSB 평면 전수 검사
+zsteg -a secret.png 2>/dev/null | head -30
+# 3) steghide (패스워드 필요 시 rockyou 사전 활용)
+steghide extract -sf secret.jpg -p ""
+# 4) 최후 수단: 문자열 긁기
+strings -n 8 secret.png | grep -i -E "flag|ctf|http" | head</pre><h4 class="mt-4">4. 실습</h4><ol><li><code>binwalk</code>로 덧붙은 zip이 있는지 확인하고 추출한다.</li><li><code>zsteg -a</code>로 LSB 평면을 검사해 숨은 문자열을 찾는다.</li><li>푸터 이후 바이트를 <code>xxd tail</code>로 직접 확인한다.</li><li>steghide 추출 시 빈 패스워드→사전 순으로 시도한다.</li><li>발견 경로(도구·근거·추출물)를 순서대로 기록한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>LSB 삽입이란?</li><li>binwalk의 용도는?</li><li>덧붙이기와 LSB 삽입 중 탐지가 쉬운 쪽은? 이유는?</li><li>steghide 추출에 패스워드가 필요할 때 시도 순서는?</li><li>이미지 크기가 같은데 용량이 비정상적으로 크면 무엇을 의심하는가?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>픽셀 값의 최하위 비트를 바꿔 육안 변화를 최소화하며 데이터를 심는 기법이다.</li><li>파일 속 덧붙은 파일·펌웨어 등 숨은 구조를 찾아 추출하는 것이다.</li><li>덧붙이기이다. 푸터 이후 바이트가 그대로 보이므로 binwalk 한 번이면 드러나기 때문이다.</li><li>빈 문자열→문제 지문 단서→rockyou 등 사전 순으로 시도한다.</li><li>덧붙은 데이터나 고밀도 LSB 페이로드를 의심하고 binwalk·zsteg로 확인한다.</li></ol></details><h4 class="mt-4">6. 흔한 실수</h4><ul><li>JPEG에 zsteg를 돌리고 PNG에 steghide만 시도하는 등 형식-도구 매칭을 틀리는 경우</li><li>추출된 zip에 또 이미지가 들어 있는 다중 은닉을 1단계에서 멈추는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="forensics-l06-01.html">← 네트워크 포렌식 (pcap)</a><a class="btn btn-primary" href="forensics-l09-01.html">포렌식 CTF 실전 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

@@ -16,10 +16,31 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>매직바이트(앞 bytes)가 진짜 형식</li><li>file 명령으로 판별</li><li>확장자 위조 탐지</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>매직바이트(앞 bytes)가 진짜 형식</li><li>file 명령으로 판별</li><li>확장자 위조 탐지</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">file mystery.bin
-xxd mystery.bin | head -1</pre>
-<h4 class="mt-4">4. 실습</h4><p>확장자를 바꾼 파일 2개를 판별해본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>매직바이트란?</li><li>확장자만 믿으면 안 되는 이유는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 식별 파이프라인</h4><p>파일 식별은 <strong>확장자 → 매직바이트 → 구조 파싱</strong> 순서로 깊어집니다. 공격자는 확장자를 속일 수 있지만, 파일 앞 바이트와 내부 구조까지 모두 속이기는 어렵습니다.</p><div class="mermaid">flowchart TD
+  F["수상한 파일 접수"] --> EXT["확장자 확인<br/>참고용으로만 기록"]
+  EXT --> MAG["매직바이트 판독<br/>앞 4~16바이트"]
+  MAG --> DB["시그니처 DB 대조<br/>file 명령·GCK"]
+  DB --> OK{"일치하는가"}
+  OK -->|예| ST["구조 파싱<br/>헤더 필드 검증"]
+  OK -->|아니오| UN["미상·난독화 의심<br/>엔트로피·문자열 분석"]
+  ST --> RP["판정 보고<br/>위조 여부 포함"]</div><p class="text-muted small">읽는 법: 위에서 아래로 진행하며, 매직바이트가 일치해도 구조 파싱까지 통과해야 최종 판정합니다. 확장자는 처음부터 신뢰하지 않습니다.</p><h4 class="mt-4">2-3. 주요 매직바이트 표</h4><table class="table table-sm table-bordered"><tr><th>시그니처</th><th>형식</th><th>비고</th></tr><tr><td><code>FF D8 FF</code></td><td>JPEG</td><td>뒤에 JFIF/Exif 마커 확인</td></tr><tr><td><code>89 50 4E 47</code></td><td>PNG</td><td>뒤따르는 IHDR 청크 검증</td></tr><tr><td><code>25 50 44 46</code></td><td>PDF (%PDF)</td><td>악성 스크립트 은닉 주의</td></tr><tr><td><code>50 4B 03 04</code></td><td>ZIP/Office</td><td>docx·apk도 ZIP 기반</td></tr><tr><td><code>7F 45 4C 46</code></td><td>ELF 실행파일</td><td>리눅스 악성코드 판별 출발점</td></tr><tr><td><code>4D 5A</code></td><td>PE 실행파일 (MZ)</td><td>exe·dll 공통</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">file mystery.bin
+xxd mystery.bin | head -1</pre><h4 class="mt-4">3-2. 심화 예제: 위조 파일 추적</h4><pre class="bg-light p-3 border rounded"># 1) 확장자와 실제 형식 비교
+ls -l suspect.jpg
+file suspect.jpg
+xxd suspect.jpg | head -2
+# 출력 앞바이트가 4D 5A 라면? jpg가 아니라 실행파일이다
+# 2) 상세 식별 + 문자열 추출
+file -k suspect.jpg
+strings -n 6 suspect.jpg | head -20
+# 3) 파일 내부에 숨은 파일이 있는지 카빙 시도
+binwalk -e suspect.jpg
+foremost -i suspect.jpg -o carved/</pre><pre class="bg-light p-3 border rounded"># 확장자 일괄 검증 스크립트
+#!/bin/bash
+# usage: ./checksig.sh 디렉토리
+for f in "$1"/*; do
+  sig=$(xxd -p -l 4 "$f")
+  echo "$f : $sig : $(file -b "$f" | cut -c1-40)"
+done</pre><h4 class="mt-4">4. 실습</h4><ol><li>정상 jpg 파일의 확장자를 <code>.txt</code>로 바꾸고 <code>file</code> 명령 결과를 확인한다.</li><li><code>xxd | head -1</code>로 앞바이트를 읽고 위 표와 대조한다.</li><li>실행파일에 <code>.jpg</code>를 붙인 위조 파일을 만들어 탐지해본다.</li><li><code>binwalk</code>로 이미지 뒤에 덧붙은(zip 등) 숨은 데이터를 찾아본다.</li><li>판정 보고서(파일명·주장 형식·실제 형식·근거 바이트)를 작성한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>매직바이트란?</li><li>확장자만 믿으면 안 되는 이유는?</li><li><code>file</code> 명령이 내부적으로 참조하는 것은?</li><li>매직바이트는 맞는데 구조 파싱이 실패하면 무엇을 의심해야 하는가?</li><li>ZIP 시그니처(<code>PK</code>)를 가진 파일이 꼭 압축파일인가? 예를 들어 설명하시오.</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>파일 맨 앞에 기록된 형식 식별 바이트. 확장자와 무관한 진짜 형식의 근거이다.</li><li>확장자는 이름에 불과해 누구나 바꿀 수 있어 위조가 쉽기 때문이다.</li><li>매직 넘버 데이터베이스(예: /usr/share/misc/magic). 바이트 패턴과 오프셋 규칙 집합이다.</li><li>헤더는 속이고 내용이 깨진 경우, 또는 푸터 절단·난독화를 의심하고 카빙·엔트로피 분석으로 넘어간다.</li><li>아니다. docx·apk·jar도 ZIP 컨테이너이므로, 시그니처 다음에 내부 구조(Office XML, AndroidManifest 등)까지 확인해야 한다.</li></ol></details><h4 class="mt-4">6. 흔한 실수</h4><ul><li><code>file</code> 결과 한 줄만 보고 확정하는 경우. <code>-k</code>와 <code>xxd</code>로 교차 검증한다.</li><li>푸터(끝 바이트)를 확인하지 않아 절단된 파일을 정상으로 보고하는 경우</li><li>매직바이트 DB가 오래된 분석 환경에서 신형 형식을 미상으로 오판하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="forensics-l00-01.html">← 증거보존 원칙</a><a class="btn btn-primary" href="forensics-l02-01.html">메타데이터 분석 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

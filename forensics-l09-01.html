@@ -16,9 +16,24 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>문제 파일 형식부터 판별</li><li>문자열→메타→카빙 순서</li><li>풀이 과정을 Write-up으로 기록</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>문제 파일 형식부터 판별</li><li>문자열→메타→카빙 순서</li><li>풀이 과정을 Write-up으로 기록</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">file → strings → exiftool → binwalk 순서 적용</pre>
-<h4 class="mt-4">4. 실습</h4><p>포렌식 문제 1개를 풀이한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>풀이 순서를 말해본다</li><li>Write-up에 남길 것은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 표준 풀이 파이프라인</h4><p>포렌식 CTF는 매번 새로울 것 같지만, 정석 순서는 고정되어 있습니다. <strong>형식 판별 → 문자열 → 메타데이터 → 카빙·심층</strong> 순으로, 쉬운 검사에서 어려운 검사로 내려가며, 각 단계 결과를 기록으로 남깁니다.</p><div class="mermaid">flowchart TD
+  Q["문제·파일 입수<br/>플래그 형식 확인"] --> F["file·xxd<br/>진짜 형식 판별"]
+  F --> S["strings<br/>평문 단서 스캔"]
+  S --> M["exiftool<br/>메타데이터"]
+  M --> B["binwalk·foremost<br/>숨은 데이터"]
+  B --> D{"플래그 발견?"}
+  D -->|아니오| DP["심층: pcap·메모리·스테가<br/>해당 장 기법 적용"]
+  DP --> D
+  D -->|예| W["Write-up 작성<br/>재현 가능하게"]</div><p class="text-muted small">읽는 법: 위에서 아래로가 기본 동선입니다. 한 단계에서 막히면 다음 단계로 넘어갔다가, 나중에 심층 기법으로 되돌아옵니다.</p><h4 class="mt-4">2-3. 문제 유형별 첫수</h4><table class="table table-sm table-bordered"><tr><th>주어진 것</th><th>첫 3수</th><th>이어지는 장</th></tr><tr><td>이미지 1장</td><td>file → strings → binwalk</td><td>L7 스테가노그래피</td></tr><tr><td>pcap</td><td>통계 → DNS Top → 객체 추출</td><td>L6 네트워크 포렌식</td></tr><tr><td>디스크 이미지</td><td>마운트 → 타임라인 → 카빙</td><td>L3 디스크 이미징</td></tr><tr><td>메모리 덤프</td><td>imageinfo → pslist → netscan</td><td>L5 메모리 포렌식</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">file → strings → exiftool → binwalk 순서 적용</pre><h4 class="mt-4">3-2. 심화 예제: 10분 풀이 루틴</h4><pre class="bg-light p-3 border rounded"># 0) 플래그 형식 메모 (예: FLAG{...}, CTF{...})
+# 1) 형식 판별 (30초)
+file chall.bin && xxd chall.bin | head -2
+# 2) 문자열 스캔 (1분)
+strings -n 6 chall.bin | grep -i -E "flag|ctf|http|pass" | head
+# 3) 메타데이터 (1분)
+exiftool chall.bin | head -20
+# 4) 숨은 데이터 (2분)
+binwalk -e chall.bin
+# 5) 막히면 심층 분기: pcap이면 tshark, 덤프면 vol, 이미지면 zsteg</pre><h4 class="mt-4">4. 실습</h4><ol><li>위 10분 루틴을 타이머를 켜고 그대로 수행한다.</li><li>각 단계 결과를 메모장에 붙여 넣어 풀이 로그를 만든다.</li><li>막힌 지점을 명시하고 심층 분기 중 하나를 선택해 적용한다.</li><li>플래그를 찾으면 역순으로(발견→근거→재현) Write-up을 쓴다.</li><li>다음 사람이 그대로 따라 할 수 있는지 읽어보며 다듬는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>풀이 순서를 말해본다</li><li>Write-up에 남길 것은?</li><li>처음부터 심층 도구(volatility 등)를 쓰지 않는 이유는?</li><li>풀이 로그를 남기는 이유는?</li><li>플래그를 찾았는데 Write-up이 부실하면 생기는 문제는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>형식 판별 → 문자열 → 메타데이터 → 카빙·심층 순이다.</li><li>환경·명령·출력·막힌 지점·분기 판단까지 재현 가능한 전 과정을 남긴다.</li><li>저비용 검사로 풀리는 문제가 많아 시간을 아끼고, 심층 도구는 전제(프로파일 등)가 필요하기 때문이다.</li><li>막힌 지점 회귀와 팀 공유, 보고서 작성의 재료가 되기 때문이다.</li><li>재현·검증이 불가해 팀 점수·학습 효과가 증발한다. 풀이는 Write-up까지가 완성이다.</li></ol></details><h4 class="mt-4">6. 흔한 실수</h4><ul><li>플래그 형식 확인을 생략해 찾고도 못 알아보고 지나치는 경우</li><li>한 도구에 집착해 파이프라인 다음 단계로 넘어가지 못하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="forensics-l07-01.html">← 스테가노그래피 분석</a><a class="btn btn-primary" href="forensics-l10-01.html">침해사고 보고서 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

@@ -16,9 +16,20 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>dd/dcfldd로 비트단위 복사</li><li>취득 전후 해시 기록</li><li>이미지는 분석용, 원본은 봉인</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>dd/dcfldd로 비트단위 복사</li><li>취득 전후 해시 기록</li><li>이미지는 분석용, 원본은 봉인</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">dd if=/dev/sdb of=case.dd bs=4M status=progress  (실습 디스크만)</pre>
-<h4 class="mt-4">4. 실습</h4><p>이미지 해시를 취득 전/후로 비교한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>이미징을 하는 이유는?</li><li>해시를 기록하는 이유는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 비트 단위 복사의 의미</h4><p>파일 복사와 이미징은 다릅니다. 파일 복사는 보이는 파일만 옮기지만, 이미징은 <strong>빈 공간·삭제된 영역·슬랙까지 포함한 섹터 전체</strong>를 복사합니다. 삭제 파일 복원이 가능한 이유가 여기에 있습니다.</p><div class="mermaid">flowchart TD
+  D["원본 디스크<br/>파일+빈공간+삭제영역"] --> RO["읽기 전용 연결<br/>Write Blocker"]
+  RO --> CP["섹터 단위 복사<br/>dd·dcfldd·EWF"]
+  CP --> H["전후 해시 기록<br/>SHA256"]
+  H --> V{"해시 일치?"}
+  V -->|예| M["이미지 마운트·분석<br/>원본은 봉인"]
+  V -->|아니오| RE["재취득"]</div><p class="text-muted small">읽는 법: 해시 일치가 이미징의 합격선입니다. 불일치 이미지는 분석에 쓰지 않고 처음부터 다시 취득합니다.</p><h4 class="mt-4">2-3. 취득 방식 비교</h4><table class="table table-sm table-bordered"><tr><th>방식</th><th>장점</th><th>주의</th></tr><tr><td>dd (raw)</td><td>단순·호환성 최고</td><td>압축·메타 없음, 용량 큼</td></tr><tr><td>dcfldd</td><td>진행률·해시 동시 기록</td><td>옵션 숙지 필요</td></tr><tr><td>EWF (E01)</td><td>압축·CoC 메타 내장</td><td>전용 도구 필요</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">dd if=/dev/sdb of=case.dd bs=4M status=progress  (실습 디스크만)</pre><h4 class="mt-4">3-2. 심화 예제</h4><pre class="bg-light p-3 border rounded"># 실습용 USB(본인 소유)에서만 실행할 것. 디바이스명 필히 확인!
+lsblk
+# 해시와 함께 이미징 (취득 중 해시 동시 계산)
+dcfldd if=/dev/sdX of=case.dd bs=4M hash=sha256 hashlog=case.hashlog statusinterval=16
+# 취득 후 검증: 원본과 이미지 해시 비교
+sha256sum /dev/sdX case.dd
+# 이미지를 읽기 전용으로 마운트해 내용 확인
+mkdir -p mnt && mount -o ro,loop case.dd mnt && ls mnt && umount mnt</pre><h4 class="mt-4">4. 실습</h4><ol><li><code>lsblk</code>로 실습 디스크 장치명을 확정한다(오지정 금지).</li><li><code>dcfldd</code>로 이미징하며 해시로그를 남긴다.</li><li>원본·이미지 해시를 비교하고 CoC에 기록한다.</li><li>이미지를 ro·loop 마운트해 파일 목록을 확인한다.</li><li>이미지에서 삭제 파일 1개를 카빙(<code>foremost</code>)으로 복원해본다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>이미징을 하는 이유는?</li><li>해시를 기록하는 이유는?</li><li>파일 복사와 이미징의 차이는?</li><li><code>if</code>/<code>of</code>를 뒤바꾸면 무슨 일이 생기는가?</li><li>EWF(E01)가 raw보다 유리한 점은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>원본을 건드리지 않고 삭제 영역까지 포함한 완전한 사본으로 분석하기 위해서이다.</li><li>취득 전후 동일함을 증명해 증거 무결성을 보장하기 위해서이다.</li><li>파일 복사는 보이는 파일만, 이미징은 빈 공간·삭제 영역까지 섹터 단위로 복사한다.</li><li>빈 디스크 내용이 원본을 덮어써 증거가 파괴된다. 치명적 실수이므로 장치명 확인이 필수이다.</li><li>압축으로 용량을 줄이고 해시·CoC 메타를 파일 안에 함께 보관할 수 있다.</li></ol></details><h4 class="mt-4">6. 흔한 실수</h4><ul><li><code>of=/dev/sdX</code>로dest를 잘못 적어 원본을 덮어쓰는 사고. <code>oflag=direct</code> 확인 습관과 장치명 이중 점검이 필수이다.</li><li>마운트된 상태의 디스크를 이미징해 도중 변경으로 해시가 어긋나는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="forensics-l02-01.html">← 메타데이터 분석</a><a class="btn btn-primary" href="forensics-l04-01.html">로그 분석 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

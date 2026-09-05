@@ -16,10 +16,30 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>쓰기방지(Write Blocker) 원칙</li><li>해시(SHA256)로 무결성 증명</li><li>Chain of Custody(보관연쇄) 기록</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>쓰기방지(Write Blocker) 원칙</li><li>해시(SHA256)로 무결성 증명</li><li>Chain of Custody(보관연쇄) 기록</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">sha256sum image.dd > image.sha256</pre>
-<h4 class="mt-4">4. 실습</h4><p>복사본 해시 일치 여부를 확인해본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>원본을 직접 분석하면 안 되는 이유는?</li><li>CoC란?</li></ol>
-<div class="d-flex justify-content-between mt-5"><a class="btn btn-primary" href="forensics-l01-01.html">파일 시그니처 분석 →</a></div></main>
+<h4 class="mt-4">2-2. 동작 원리 심화: 왜 사본으로만 분석하는가</h4><p>디지털 증거는 <strong>읽는 행위 자체가 상태를 바꾼다</strong>는 점에서 물리적 증거와 다릅니다. 파일을 열면 접근 시각(ATime)이 갱신되고, 디스크를 마운트하면 저널이 기록됩니다. 그래서 포렌식은 원본을 건드리지 않고 비트 단위로 똑같은 사본을 떠서 분석합니다.</p><div class="mermaid">flowchart TD
+  P["전원·현장 상태 확인<br/>끄지 말고 우선 기록"] --> W["Write Blocker 장착<br/>읽기 전용 연결"]
+  W --> IMG["비트 단위 이미징<br/>dd·dcfldd·FTK Imager"]
+  IMG --> H1["원본 해시 기록<br/>SHA256"]
+  H1 --> H2["사본 해시 대조<br/>일치 확인"]
+  H2 --> SEAL["원본 봉인·보관<br/>CoC 문서 작성"]
+  SEAL --> ANA["사본으로만 분석"]</div><p class="text-muted small">읽는 법: 위에서 아래로가 표준 절차입니다. 해시 대조(H2)에서 불일치가 나오면 그 사본은 증거로 쓸 수 없으므로 이미징부터 다시 수행합니다.</p><h4 class="mt-4">2-3. 보관연쇄(CoC) 기록 항목</h4><table class="table table-sm table-bordered"><tr><th>항목</th><th>기록 내용</th><th>왜 필요한가</th></tr><tr><td>식별자</td><td>증거 번호, 매체 시리얼</td><td>뒤바뀜 방지</td></tr><tr><td>해시값</td><td>SHA256 (수집 시점)</td><td>무결성 증명</td></tr><tr><td>취급 이력</td><td>누가·언제·무엇을·왜</td><td>신뢰 사슬 유지</td></tr><tr><td>보관 상태</td><td>봉인 번호, 보관 장소</td><td>변조 가능성 차단</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">sha256sum image.dd > image.sha256</pre><h4 class="mt-4">3-2. 심화 예제: 이미징부터 검증까지</h4><pre class="bg-light p-3 border rounded"># 1) 읽기 전용으로 연결 확인 (Write Blocker 또는 ro 마운트)
+blockdev --getro /dev/sdb
+# 2) 비트 단위 이미징 (진행률 표시)
+dcfldd if=/dev/sdb of=evidence.dd hash=sha256 hashlog=evidence.hashlog
+# 3) 원본과 사본 해시 대조
+sha256sum /dev/sdb evidence.dd
+# 4) 해시값을 CoC 문서에 기록하고 원본 봉인</pre><pre class="bg-light p-3 border rounded"># 사본 무결성을 언제든 재검증하는 스크립트
+#!/bin/bash
+# usage: ./verify.sh evidence.dd evidence.sha256
+sha256sum -c "$2" || echo "경고: 해시 불일치. 이 사본은 증거로 사용 불가"</pre><h4 class="mt-4">3-3. 인계 흐름도</h4><div class="mermaid">sequenceDiagram
+  participant F as 현장 수집관
+  participant C as 증거 보관소
+  participant A as 분석관
+  F->>C: 이미지+해시 인계 (CoC 서명)
+  C->>C: 봉인 보관
+  A->>C: 사본 대여 요청
+  C->>A: 사본 전달 (해시 대조)
+  A->>A: 분석 후 해시 재검증</div><p class="text-muted small">읽는 법: 증거는 항상 보관소를 경유하며, 주고받을 때마다 해시를 대조합니다. 대조 기록이 끊기면 법정에서 증거능력을 다투게 됩니다.</p><h4 class="mt-4">4. 실습</h4><ol><li>USB에 테스트 파일을 넣고 <code>sha256sum</code>으로 해시를 기록한다.</li><li><code>dd</code>로 USB 전체를 이미지 파일로 복사한다.</li><li>이미지 파일의 해시를 구해 1번 값과 비교한다.</li><li>이미지를 루프백 마운트(<code>mount -o ro,loop</code>)해 내부 파일을 확인한다.</li><li>CoC 양식(식별자·해시·취급 이력·보관 상태)을 채워본다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>원본을 직접 분석하면 안 되는 이유는?</li><li>CoC란?</li><li>이미징 시 Write Blocker 없이 진행하면 어떤 문제가 생기는가?</li><li>해시 대조에서 불일치가 나오면 어떻게 해야 하는가?</li><li>분석용 사본과 보관용 원본을 구분하는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>읽기·마운트만으로 접근 시각·저널 등 상태가 바뀌어 증거가 훼손되기 때문이다.</li><li>Chain of Custody. 증거의 수집부터 폐기까지 취급 이력을 끊김 없이 기록한 문서이다.</li><li>OS가 매체에 쓰기를 수행해 원본이 변경되고 증거능력을 잃는다.</li><li>해당 사본을 폐기하고 이미징부터 다시 수행한다. 불일치 사본으로 분석을 이어가면 안 된다.</li><li>원본은 봉인 보관해 무결성을 지키고, 사본으로만 분석해야 훼손 논란을 원천 차단할 수 있다.</li></ol></details><h4 class="mt-4">6. 흔한 실수</h4><ul><li>분석 PC에 원본 디스크를 그대로 연결해 OS가 자동 마운트·저널 기록을 해버리는 경우</li><li>MD5만 기록하는 경우. 충돌 공격이 현실적이므로 SHA256 이상을 사용한다.</li><li>해시는 기록했는데 CoC 서명을 빠뜨려 인계 과정이 증명되지 않는 경우</li></ul><div class="d-flex justify-content-between mt-5"><a class="btn btn-outline-secondary" href="field-forensics.html">← 분야 목차</a><a class="btn btn-primary" href="forensics-l01-01.html">파일 시그니처 분석 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><button id="toTop" class="btn btn-dark rounded-circle" title="맨 위로">↑</button><script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:"base",securityLevel:"loose"});var t=document.getElementById("toTop");window.addEventListener("scroll",function(){t.style.display=window.scrollY>400?"block":"none"});t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});</script></body></html>
