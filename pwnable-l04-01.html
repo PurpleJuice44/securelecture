@@ -16,9 +16,29 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>가젯(ret으로 끝나는 명령 조각)</li><li>ret2libc: 라이브러리 함수 재사용</li><li>ROP 체인 = 주소들의 연속</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>가젯(ret으로 끝나는 명령 조각)</li><li>ret2libc: 라이브러리 함수 재사용</li><li>ROP 체인 = 주소들의 연속</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">가젯 나열 → 체인 구성 (개념도)</pre>
-<h4 class="mt-4">4. 실습</h4><p>가젯 3개를 찾아 용도를 적어본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>가젯이란?</li><li>ret2libc의 아이디어는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 실행 없이 실행하기</h4><p>NX가 켜지면 스택 코드를 실행할 수 없습니다. 대신 <strong>이미 실행 가능한 코드 조각(가젯)</strong>들을 주소 나열로 이어 붙입니다. <code>ret</code>이 다음 가젯으로 점프하므로, 체인 전체가 프로그램처럼 동작합니다. 이미 있는 <code>system</code> 함수를 부르는 것이 ret2libc입니다.</p><div class="mermaid">flowchart TD
+  G["가젯 수집<br/>ROPgadget"]
+  G --> P["pop rdi·ret<br/>인자 세팅용"]
+  G --> S["system 주소<br/>libc"]
+  G --> B["/bin/sh 문자열<br/>libc"]
+  P --> C["체인 조립<br/>주소 나열"]
+  S --> C
+  B --> C
+  C --> R["RET 덮기<br/>체인 실행"]</div><p class="text-muted small">읽는 법: 가젯은 레고 블록, 체인은 조립 설명서입니다. ret이 다음 블록으로 자동 이동시켜 전체가 실행됩니다.</p><h4 class="mt-4">2-3. 체인 구성표(x64 ret2libc)</h4><table class="table table-sm table-bordered"><tr><th>순서</th><th>스택 값</th><th>효과</th></tr><tr><td>1</td><td>pop rdi 주소</td><td>다음 값을 rdi로</td></tr><tr><td>2</td><td>/bin/sh 주소</td><td>첫 인자 세팅</td></tr><tr><td>3</td><td>system 주소</td><td>system("/bin/sh") 호출</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">가젯 나열 → 체인 구성 (개념도)</pre><h4 class="mt-4">3-2. 심화 예제: 가젯에서 체인까지(실습 VM)</h4><pre class="bg-light p-3 border rounded"># 1) 가젯 수집
+ROPgadget --binary vuln | grep "pop rdi"
+# 2) libc 주소 파악 (ASLR off 실습 환경)
+ldd vuln | grep libc
+# 3) 오프셋 계산 (readelf -s | grep system)
+# 4) pwntools 체인 조립 개념
+# payload = b"A"*offset + p64(pop_rdi) + p64(binsh) + p64(system)</pre><h4 class="mt-4">4. 실습</h4><ol><li>가젯 3개를 찾아 용도를 적어본다.</li><li>pop rdi 가젯의 주소를 기록한다.</li><li>system·/bin/sh 주소를 구한다.</li><li>위 표 순서대로 체인을 조립한다.</li><li>셸 획득 여부를 확인하고 과정을 기록한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>가젯이란?</li><li>ret2libc의 아이디어는?</li><li>pop rdi 가젯이 필요한 이유는?</li><li>체인이 동작하는 원리는?</li><li>NX가 있어도 ROP가 되는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>ret으로 끝나는 짧은 기존 코드 조각이다.</li><li>새 코드 주입 없이 libc의 system 등 기존 함수를 재사용하는 것이다.</li><li>x64 호출규약 첫 인자를 rdi에 넣어야 하기 때문이다.</li><li>각 가젯 끝의 ret이 다음 주소를 꺼내 점프하므로 연속 실행되기 때문이다.</li><li>실행 가능한 기존 코드만 쓰므로 실행 금지가 무의미해지기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 ROP 실행</h4><div class="mermaid">sequenceDiagram
+  participant A as 공격자
+  participant S as 스택 체인
+  participant C as CPU
+  A->>S: 주소 나열 삽입
+  C->>S: ret→pop rdi
+  S-->>C: rdi=/bin/sh
+  C->>S: ret→system
+  S-->>A: 셸 획득</div><p class="text-muted small">읽는 법: ret이 도미노를 쓰러뜨립니다. 각 조각이 끝나면 다음 주소가 자동으로 실행됩니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>스택 정렬(16바이트)을 맞추지 않아 system 호출이 터지는 경우. ret 가젯 1개로 패딩한다.</li><li>ASLR이 켜진 주소를 그대로 쓰는 경우. L5 릭이 선행되어야 한다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="pwnable-l03-01.html">← 셸코드 기초</a><a class="btn btn-primary" href="pwnable-l05-01.html">ASLR 우회와 릭 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

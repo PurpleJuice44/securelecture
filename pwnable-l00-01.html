@@ -16,10 +16,27 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>text(코드)/stack(지역변수)/heap(동적)</li><li>rip는 다음 실행 주소</li><li>입력 길이가 메모리를 넘치면 위험</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>text(코드)/stack(지역변수)/heap(동적)</li><li>rip는 다음 실행 주소</li><li>입력 길이가 메모리를 넘치면 위험</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">스택 그림: [buffer][SFP][RET] ← 넘치면 RET 덮어씀</pre>
-<h4 class="mt-4">4. 실습</h4><p>그림으로 버퍼→RET까지 바이트 수를 표시해본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>스택과 힙의 차이는?</li><li>RET가 덮이면 생기는 일은?</li></ol>
-<div class="d-flex justify-content-between mt-5"><a class="btn btn-primary" href="pwnable-l01-01.html">버퍼오버플로우 기초 →</a></div></main>
+<h4 class="mt-4">2-2. 동작 원리 심화: 프로세스 메모리 지도</h4><p>프로그램이 실행되면 메모리에 <strong>코드·스택·힙</strong> 3개 구역이 펼쳐집니다. 코드는 명령, 스택은 함수 호출 기록(지역변수·복귀주소), 힙은 동적 할당(malloc) 영역입니다. <code>rip</code>는 다음에 실행할 명령의 주소로, 이 값이 공격자 손에 넘어가면 프로그램이 남의 코드를 실행합니다.</p><div class="mermaid">flowchart TD
+  T["text<br/>실행 코드"] --> R["rip<br/>다음 명령 주소"]
+  S["stack<br/>지역변수·SFP·RET"] --> R2["ret 실행 시<br/>RET→rip"]
+  H["heap<br/>malloc 영역"] --> U["UAF·오버플로우<br/>L7·L8에서 공략"]
+  B["입력 버퍼<br/>스택 위 배열"] --> O{"길이 초과?"}
+  O -->|예| W["RET 덮어씀<br/>rip 장악"]
+  O -->|아니오| N["정상 복귀"]</div><p class="text-muted small">읽는 법: 스택 위 버퍼가 넘치면 그 아래 RET가 덮입니다. RET는 곧 다음 목적지이므로, 덮는 순간 프로그램의 핸들이 넘어갑니다.</p><h4 class="mt-4">2-3. 구역별 역할표</h4><table class="table table-sm table-bordered"><tr><th>구역</th><th>들어가는 것</th><th>공격 관점</th></tr><tr><td>text</td><td>기계어 코드</td><td>ROP 가젯 수집처</td></tr><tr><td>stack</td><td>지역변수·복귀주소</td><td>BOF로 RET 덮기</td></tr><tr><td>heap</td><td>동적 객체</td><td>UAF·청크 조작</td></tr><tr><td>libc</td><td>공유 라이브러리</td><td>system·가젯 공급원</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">스택 그림: [buffer][SFP][RET] ← 넘치면 RET 덮어씀</pre><h4 class="mt-4">3-2. 심화 예제: 스택 프레임 손으로 그리기</h4><pre class="bg-light p-3 border rounded">void vuln() {
+  char buf[64];      // [ebp-0x40] ~ [ebp-0x01]
+  gets(buf);         // 경계검사 없음! 64자 초과 입력 시
+}                    // [ebp] SFP 덮음 → [ebp+4] RET 덮음
+// 스택 그림 (아래가 높은 주소)
+// [ buf 64바이트 ][ SFP 4/8바이트 ][ RET 4/8바이트 ]
+//  입력 64+8+주소 길이 → rip 장악</pre><h4 class="mt-4">4. 실습</h4><ol><li>그림으로 버퍼→RET까지 바이트 수를 표시해본다.</li><li>32비트와 64비트에서 SFP·RET 크기가 어떻게 다른지 적는다.</li><li>위 예제에서 RET까지 필요한 입력 길이를 계산한다.</li><li>gdb에서 <code>info frame</code>으로 실제 프레임을 관찰한다.</li><li>스택·힙·코드를 각각 한 줄로 설명해본다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>스택과 힙의 차이는?</li><li>RET가 덮이면 생기는 일은?</li><li>rip의 역할은?</li><li>버퍼가 RET보다 아래(낮은 주소)에 있어야 공격이 되는 이유는?</li><li>text 영역을 직접 고치기 어려운 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>스택은 함수 호출 기록용 자동 영역, 힙은 malloc 수동 할당 영역이다.</li><li>ret 실행 시 공격자가 심은 주소로 점프해 흐름을 장악당한다.</li><li>다음에 실행할 명령의 주소를 가리킨다.</li><li>스택이 낮은 주소로 자라면서 위(높은 주소)의 RET를 덮기 때문이다.</li><li>읽기 전용·실행 전용으로 매핑되고 ASLR·무결성 검사가 있기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 공격 전제</h4><div class="mermaid">sequenceDiagram
+  participant A as 공격자
+  participant P as 프로그램
+  participant S as 스택
+  A->>P: 초과 길이 입력
+  P->>S: 경계검사 없이 복사
+  S-->>P: SFP·RET 덮어씀
+  P->>P: ret 실행
+  P-->>A: rip 장악 (다음 장으로)</div><p class="text-muted small">읽는 법: 복사→덮어씀→복귀의 3박자입니다. 이 흐름을 눈으로 좇을 수 있으면 포너블의 절반을 이해한 셈입니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>SFP와 RET 순서를 뒤집어 그리는 경우. 버퍼→SFP→RET 순(높은 주소 방향)이다.</li><li>32·64비트 주소 크기를 혼동해 오프셋을 틀리는 경우</li></ul><div class="d-flex justify-content-between mt-5"><a class="btn btn-outline-secondary" href="field-pwnable.html">← 분야 목차</a><a class="btn btn-primary" href="pwnable-l01-01.html">버퍼오버플로우 기초 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><button id="toTop" class="btn btn-dark rounded-circle" title="맨 위로">↑</button><script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:"base",securityLevel:"loose"});var t=document.getElementById("toTop");window.addEventListener("scroll",function(){t.style.display=window.scrollY>400?"block":"none"});t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});</script></body></html>

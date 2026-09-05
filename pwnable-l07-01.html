@@ -16,9 +16,26 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>malloc(할당)/free(해제) 짝 맞추기</li><li>use-after-free/double-free 개념</li><li>힙은 메타데이터(크기 등)와 함께 관리</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>malloc(할당)/free(해제) 짝 맞추기</li><li>use-after-free/double-free 개념</li><li>힙은 메타데이터(크기 등)와 함께 관리</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">할당→해제→사용 순서도 그리기</pre>
-<h4 class="mt-4">4. 실습</h4><p>UAF 상황을 순서도로 그려본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>UAF란?</li><li>double-free의 위험은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 힙의 생명주기</h4><p>힙은 <strong>할당(malloc)→사용→해제(free)</strong>의 생명주기를 가집니다. 청크 앞에는 크기 등 메타데이터가 붙고, 해제된 청크는 재사용 목록에 들어갑니다. 이 고리가 어긋나면 UAF·double-free가 터집니다.</p><div class="mermaid">flowchart TD
+  M["malloc<br/>청크 할당"] --> U["사용<br/>읽기·쓰기"]
+  U --> F["free<br/>해제·목록 등록"]
+  F --> N["포인터 NULL 처리?"]
+  N -->|예| S["안전 종료"]
+  N -->|아니오| V["UAF 위험<br/>다음 장 공략"]
+  F2["double free"] --> C["목록 오염<br/>중복 할당"]</div><p class="text-muted small">읽는 법: 해제 후 포인터를 비우지 않으면 죽은 청크를 계속 가리킵니다. 그것이 UAF의 씨앗입니다.</p><h4 class="mt-4">2-3. 힙 취약점 3종</h4><table class="table table-sm table-bordered"><tr><th>취약점</th><th>원인</th><th>결과</th></tr><tr><td>UAF</td><td>해제 후 사용</td><td>재할당 내용 장악</td></tr><tr><td>double-free</td><td>두 번 해제</td><td>할당자 상태 오염</td></tr><tr><td>heap overflow</td><td>청크 경계 초과 쓰기</td><td>메타데이터 변조</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">할당→해제→사용 순서도 그리기</pre><h4 class="mt-4">3-2. 심화 예제: 생명주기 코드로 보기</h4><pre class="bg-light p-3 border rounded">char *p = malloc(32);   // 1) 할당: 청크+메타데이터
+strcpy(p, "hello");      // 2) 사용
+free(p);                 // 3) 해제: 재사용 목록행
+// p = NULL;             // ← 이 한 줄이 없으면 UAF!
+strcpy(p, "evil");       // 4) 해제 후 사용 (취약)
+// double-free 예시
+// free(p); free(p);     // 두 번 해제 (취약)</pre><h4 class="mt-4">4. 실습</h4><ol><li>UAF 상황을 순서도로 그려본다.</li><li>위 코드에서 취약 줄을 표시하고 패치를 적는다.</li><li>malloc/free 짝을 표로 맞춰본다.</li><li>청크+메타데이터 그림을 그린다.</li><li>double-free가 할당자를 망치는 이유를 한 줄로 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>UAF란?</li><li>double-free의 위험은?</li><li>해제 후 NULL 대입이 막는 것은?</li><li>힙 메타데이터가 노려지는 이유는?</li><li>스택 BOF와 힙 취약점의 차이는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>해제된 메모리를 계속 사용하는 것이다.</li><li>할당자 목록이 오염되어 같은 메모리가 중복 배분된다.</li><li>죽은 포인터 사용(UAF)을 막는다.</li><li>크기·링크를 속이면 할당 흐름 자체를 조작할 수 있기 때문이다.</li><li>스택은 복귀주소 직접 덮기, 힙은 생명주기·메타 조작이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 생명주기</h4><div class="mermaid">sequenceDiagram
+  participant P as 프로그램
+  participant H as 힙 할당자
+  P->>H: malloc 요청
+  H-->>P: 청크 반환
+  P->>H: free 반환
+  H-->>H: 목록 등록
+  P->>P: NULL 대입 (안전)</div><p class="text-muted small">읽는 법: 빌려쓰고 반납하고 명부에서 지우기까지가 한 사이클입니다. 마지막 줄이 빠지면 사고가 납니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>free만 하고 NULL을 빼먹는 경우. 리뷰 체크리스트 1순위이다.</li><li>에러 경로에서만 해제가 빠져 누수·이중해제가 생기는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="pwnable-l06-01.html">← Canary 우회 개념</a><a class="btn btn-primary" href="pwnable-l08-01.html">UAF 활용 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

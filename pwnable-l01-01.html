@@ -16,9 +16,31 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>strcpy/scanf/gets의 경계검사 부재</li><li>입력 길이를 늘려가며 crash 관찰</li><li>대응: strncpy, 경계검사, canary</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>strcpy/scanf/gets의 경계검사 부재</li><li>입력 길이를 늘려가며 crash 관찰</li><li>대응: strncpy, 경계검사, canary</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">python3 -c 'print("A"*100)' | ./vuln  (실습 VM)</pre>
-<h4 class="mt-4">4. 실습</h4><p>crash가 나는 최소 길이를 기록한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>BOF의 원인은?</li><li>대응법 2가지는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 위험 함수와 길이 실험</h4><p><code>strcpy·gets·scanf(%s)</code>는 길이를 묻지 않고 복사합니다. 공격자는 길이를 늘려가며 <strong>언제 터지는지(crash), 어디까지 덮이는지</strong>를 관찰해 RET까지 거리를 잽니다.</p><div class="mermaid">flowchart TD
+  F["위험 함수 발견<br/>strcpy·gets·scanf"] --> T["길이 증가 실험<br/>A×50→100→200"]
+  T --> C{"crash?"}
+  C -->|아니오| T
+  C -->|예| P["패턴 입력<br/>cyclic·De Bruijn"]
+  P --> E["덮인 값 확인<br/>eip·rip"]
+  E --> O["오프셋 확정<br/>RET까지 거리"]</div><p class="text-muted small">읽는 법: 무작정 긴 입력이 아니라 crash 경계→패턴→오프셋 순으로 좁혀갑니다. 패턴 값이 rip에 그대로 박히면 거리 확정입니다.</p><h4 class="mt-4">2-3. 위험 함수표</h4><table class="table table-sm table-bordered"><tr><th>함수</th><th>문제</th><th>안전 대체</th></tr><tr><td><code>gets</code></td><td>길이 제한 불가</td><td><code>fgets(buf, size, stdin)</code></td></tr><tr><td><code>strcpy</code></td><td>종료문자까지 무한 복사</td><td><code>strncpy + 널 보장</code></td></tr><tr><td><code>scanf %s</code></td><td>폭 지정 없으면 무제한</td><td><code>%63s</code> 등 폭 지정</td></tr><tr><td><code>sprintf</code></td><td>버퍼 초과 가능</td><td><code>snprintf</code></td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">python3 -c 'print("A"*100)' | ./vuln  (실습 VM)</pre><h4 class="mt-4">3-2. 심화 예제: 오프셋 재기(실습 VM)</h4><pre class="bg-light p-3 border rounded"># 1) crash 경계 찾기
+for n in 50 100 200 300; do
+  echo -n "$n : "
+  python3 -c "print('A'*$n)" | ./vuln; echo "exit=$?"
+done
+# 2) 패턴으로 정확한 오프셋 (pwntools)
+python3 -c "from pwn import *; print(cyclic(300))" | ./vuln
+# (gdb) i r eip  → 0x6161616c → cyclic_find(0x6161616c)
+# 3) 대응 코드 비교
+# gets(buf) → fgets(buf, sizeof(buf), stdin)</pre><h4 class="mt-4">4. 실습</h4><ol><li>crash가 나는 최소 길이를 기록한다.</li><li>cyclic 패턴으로 RET까지 오프셋을 확정한다.</li><li>대응 코드(fgets·폭 지정)로 같은 입력이 막히는지 검증한다.</li><li>컴파일러 경고(<code>-Wall</code>의 gets 경고)를 확인한다.</li><li>실험 로그(길이·결과·오프셋)를 표로 정리한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>BOF의 원인은?</li><li>대응법 2가지는?</li><li>cyclic 패턴을 쓰는 이유는?</li><li><code>strncpy</code> 사용 시 빠뜨리면 안 되는 것은?</li><li><code>gets</code>가 컴파일 경고 대상인 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>경계검사 없는 복사로 버퍼를 넘어 SFP·RET를 덮기 때문이다.</li><li>안전 함수 교체와 canary·NX 등 보호기법이다.</li><li>덮인 4바이트 값으로 오프셋을 역산할 수 있기 때문이다.</li><li>널 종료 보장이다. 꽉 차면 널이 안 붙어 다음 동작이 어긋난다.</li><li>길이 제한이 구조적으로 불가능해 안전하게 쓸 방법이 없기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 길이 실험</h4><div class="mermaid">sequenceDiagram
+  participant A as 공격자
+  participant P as vuln
+  A->>P: A×50 (정상)
+  P-->>A: exit 0
+  A->>P: A×200 (crash?)
+  P-->>A: Segmentation fault
+  A->>P: cyclic 패턴
+  P-->>A: eip=0x6161616c
+  A->>A: 오프셋 확정</div><p class="text-muted small">읽는 법: 정상→비정상의 경계를 찾고, 패턴으로 정확한 거리를 잽니다. 이 거리가 다음 장 RET 덮기의 재료입니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>환경(ASLR·canary)이 켜진 채로 실험해 재현이 안 되는 경우. 실습용은 보호기법을 끈 빌드로 한다.</li><li>오프셋을 어림짐작으로 때우는 경우. 1바이트 오차가 전체를 망친다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="pwnable-l00-01.html">← 메모리 구조</a><a class="btn btn-primary" href="pwnable-l02-01.html">RET 덮기와 rip 장악 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

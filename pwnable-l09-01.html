@@ -16,9 +16,31 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>보호기법 확인 → 오프셋 → 릭 → 최종 페이로드</li><li>pwntools: process/remote, p64, sendline</li><li>로컬 성공 후 원격 적용</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>보호기법 확인 → 오프셋 → 릭 → 최종 페이로드</li><li>pwntools: process/remote, p64, sendline</li><li>로컬 성공 후 원격 적용</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">r = process('./vuln'); r.sendline(payload) (개념)</pre>
-<h4 class="mt-4">4. 실습</h4><p>쉬운 pwn 문제 1개를 풀이한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>풀이 4단계를 말해본다</li><li>로컬/원격 차이 주의점은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 풀이 4단계 파이프라인</h4><p>pwn 문제 풀이는 <strong>보호기법 확인→오프셋→릭→최종 페이로드</strong>의 정형 루틴입니다. pwntools는 이 과정을 자동화하는 도구로, 로컬에서 터뜨린 뒤 원격에만 주소를 바꿔 던집니다.</p><div class="mermaid">flowchart TD
+  C["checksec<br/>보호기법 확인"] --> O["오프셋<br/>cyclic"]
+  O --> L["릭<br/>base 계산"]
+  L --> P["페이로드 조립<br/>ROP·ret2libc"]
+  P --> T["로컬 시험<br/>process"]
+  T --> R["원격 적용<br/>remote"]</div><p class="text-muted small">읽는 법: 앞에서 배운 L1·L2·L5·L4가 순서대로 이어진 것입니다. 어느 단계에서 막혔는지 알면 해당 장으로 돌아가면 됩니다.</p><h4 class="mt-4">2-3. pwntools 치트시트</h4><table class="table table-sm table-bordered"><tr><th>함수</th><th>용도</th></tr><tr><td><code>process·remote</code></td><td>로컬·원격 연결</td></tr><tr><td><code>p64·u64</code></td><td>주소 포장·해제</td></tr><tr><td><code>sendline·recvuntil</code></td><td>입출력 동기화</td></tr><tr><td><code>cyclic·cyclic_find</code></td><td>오프셋 계산</td></tr><tr><td><code>ELF·ROP</code></td><td>심볼·가젯 탐색</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">r = process('./vuln'); r.sendline(payload) (개념)</pre><h4 class="mt-4">3-2. 심화 예제: 풀이 스크립트 골격</h4><pre class="bg-light p-3 border rounded">from pwn import *
+elf = ELF("./vuln")
+# 1) 오프셋 (사전 계산값)
+offset = 72
+# 2) 릭 단계: puts 출력으로 libc base 계산 (문제별 수정)
+# leak = u64(r.recv(6).ljust(8, b"\x00"))
+# base = leak - 0x80ed0
+# 3) 최종 페이로드
+# pay = b"A"*offset + p64(pop_rdi) + p64(binsh) + p64(system)
+# 4) 로컬→원격 전환 (한 줄 교체)
+# r = process("./vuln")
+r = remote("실습호스트", 9000)
+# r.sendline(pay); r.interactive()</pre><h4 class="mt-4">4. 실습</h4><ol><li>쉬운 pwn 문제 1개를 풀이한다.</li><li>checksec→오프셋→릭→페이로드 단계별 로그를 남긴다.</li><li>로컬 성공 스크립트를 원격용으로 바꿔 재시험한다.</li><li>막힌 단계를 해당 장(L2·L4·L5)으로 되돌아가 해결한다.</li><li>풀이 과정을 Write-up 1페이지로 정리한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>풀이 4단계를 말해본다</li><li>로컬/원격 차이 주의점은?</li><li><code>recvuntil</code>을 쓰는 이유는?</li><li>원격에서만 실패하면 의심하는 것은?</li><li>익스플로잇 작성 후 할 일은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>보호기법 확인→오프셋→릭→최종 페이로드이다.</li><li>libc 버전·ASLR·환경 차이다. 원격 libc를 확정해야 한다.</li><li>출력 타이밍을 맞춰 입력을 동기화하기 위해서이다.</li><li>libc 버전 mismatch와 네트워크 지연·타임아웃이다.</li><li>동작 검증 후 Write-up 기록이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 로컬→원격</h4><div class="mermaid">sequenceDiagram
+  participant S as 스크립트
+  participant L as 로컬 vuln
+  participant R as 원격 서버
+  S->>L: 단계별 시험
+  L-->>S: 셸 획득
+  S->>R: 같은 페이로드
+  R-->>S: 셸 획득 확인</div><p class="text-muted small">읽는 법: 로컬은 실험실, 원격은 본무대입니다. 로컬에서 3회 연속 성공해야 원격에 도전합니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>로컬 libc 오프셋을 원격에 그대로 쓰는 경우</li><li>동기화 없이 입력을 밀어 넣어 타이밍이 어긋나는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="pwnable-l08-01.html">← UAF 활용</a><a class="btn btn-primary" href="pwnable-l10-01.html">커널 익스플로잇 개요 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

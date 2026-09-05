@@ -16,9 +16,26 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>RET 앞에 랜덤 canary 배치</li><li>포맷스트링버그로 canary leak</li><li>1바이트씩 강제추측(brute-force) 개념</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>RET 앞에 랜덤 canary 배치</li><li>포맷스트링버그로 canary leak</li><li>1바이트씩 강제추측(brute-force) 개념</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">canary leak → 원래값 복원 후 페이로드 (개념)</pre>
-<h4 class="mt-4">4. 실습</h4><p>보호기법 확인: checksec --file=./vuln</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>canary의 위치와 역할은?</li><li>checksec으로 보는 항목은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 카나리아의 검증 고리</h4><p>함수 시작 시 스택에 <strong>랜덤 값(canary)</strong>을 심고, 반환 전에 값이 그대로인지 검사합니다. 넘침이 있으면 카나리아가 먼저 망가지므로 변조가 발각됩니다. 우회는 값을 알아내(leak) 원래대로 복원하거나, 카나리아를 건드리지 않는 경로를 찾는 것입니다.</p><div class="mermaid">flowchart TD
+  F["함수 진입"] --> P["canary 삽입<br/>RET 앞 배치"]
+  P --> B["버퍼 복사<br/>취약 지점"]
+  B --> C{"canary 변조?"}
+  C -->|예| A["__stack_chk_fail<br/>즉시 종료"]
+  C -->|아니오| R["RET 복귀"]
+  L["leak 확보"] --> W["원값 복원 삽입<br/>우회"]</div><p class="text-muted small">읽는 법: 복사→검사의 고리입니다. 검사 전에 값을 알아내 원래대로 돌려놓으면 검사가 속습니다.</p><h4 class="mt-4">2-3. 우회 3경로표</h4><table class="table table-sm table-bordered"><tr><th>경로</th><th>원리</th><th>전제</th></tr><tr><td>포맷스트링 릭</td><td><code>%x</code>로 스택 값 유출</td><td>FSB 취약점 동반</td></tr><tr><td>1바이트 brute-force</td><td>fork 서버에서 한 바이트씩 추측</td><td>fork·무한 재시도 가능</td></tr><tr><td>카나리아 미터치</td><td>RET만 노리는 부분 덮기</td><td>구조상 우회 경로 존재</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">canary leak → 원래값 복원 후 페이로드 (개념)</pre><h4 class="mt-4">3-2. 심화 예제: 보호기법 판독(실습 VM)</h4><pre class="bg-light p-3 border rounded"># 보호기법 현황 확인
+checksec --file=./vuln
+# (Canary found / NX enabled / PIE 등 표시)
+# canary 값 관찰 (crash 메시지로 유추만, 실습 개념)
+./vuln < pay   # "*** stack smashing detected ***" 확인
+# 페이로드 구조 개념
+# b"A"*offset + p64(canary) + b"B"*8 + p64(ret_addr)</pre><h4 class="mt-4">4. 실습</h4><ol><li>보호기법 확인: checksec --file=./vuln</li><li>카나리아 탐지 메시지를 유발해본다.</li><li>페이로드 구조(오프셋+카나리아+RET)를 그린다.</li><li>1바이트 brute-force 개념을 순서도로 정리한다.</li><li>포맷스트링 릭 개념과 연결해 설명한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>canary의 위치와 역할은?</li><li>checksec으로 보는 항목은?</li><li>스택 스매싱 탐지 시 프로그램은 어떻게 되는가?</li><li>brute-force가 통하는 전제는?</li><li>카나리아를 알아내도 필요한 다음 단계는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>RET 앞에 배치되어 넘침 여부를 검사하는 것이다.</li><li>Canary·NX·PIE·RELRO 등 보호기법 유무이다.</li><li>즉시 종료된다.</li><li>fork 서버처럼 카나리아가 바뀌지 않고 무한 재시도가 가능한 것이다.</li><li>원값을 복원 삽입한 뒤 RET 장악·ROP로 이어가는 것이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 우회 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 공격자
+  participant P as vuln
+  A->>P: 포맷스트링 릭
+  P-->>A: canary 값
+  A->>P: 원값 복원 페이로드
+  P->>P: 검사 통과
+  P-->>A: RET 장악</div><p class="text-muted small">읽는 법: 알아내기→복원하기의 2단계입니다. 검사 자체를 끄는 게 아니라 속이는 것입니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>카나리아 첫 바이트(널) 처리를 놓쳐 릭이 어긋나는 경우</li><li>fork가 아닌데 brute-force를 시도해 값이 바뀌는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="pwnable-l05-01.html">← ASLR 우회와 릭</a><a class="btn btn-primary" href="pwnable-l07-01.html">Heap 기초 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

@@ -16,9 +16,25 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>free 후 포인터 초기화 누락이 원인</li><li>재할당으로 내용물 장악 개념</li><li>vtable/함수포인터 변조 아이디어</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>free 후 포인터 초기화 누락이 원인</li><li>재할당으로 내용물 장악 개념</li><li>vtable/함수포인터 변조 아이디어</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">free(p); /* p=NULL 누락 */ ... strcpy(p) (개념)</pre>
-<h4 class="mt-4">4. 실습</h4><p>취약 코드 1개를 찾아 패치 방법을 적는다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>근본 원인은?</li><li>안전한 코딩 습관은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 죽은 방에 새 세입자 들이기</h4><p>UAF 활용의 핵심은 <strong>해제된 청크에 공격자가 원하는 물건을 재배치</strong>하는 것입니다. 죽은 객체의 함수포인터 자리에 새 할당으로 공격 주소를 심으면, 프로그램이 죽은 객체를 호출하는 순간 흐름이 넘어옵니다.</p><div class="mermaid">flowchart TD
+  A["객체 할당<br/>함수포인터 포함"] --> F["free<br/>NULL 미처리"]
+  F --> R["재할당<br/>공격 데이터로"]
+  R --> O["옛 포인터로 호출<br/>UAF 발동"]
+  O --> H["함수포인터→공격 주소<br/>흐름 장악"]</div><p class="text-muted small">읽는 법: 해제→재할당→오래된 포인터 호출의 3박자입니다. 재할당 내용을 장악하면 호출 결과가 장악됩니다.</p><h4 class="mt-4">2-3. 공격·방어표</h4><table class="table table-sm table-bordered"><tr><th>구분</th><th>내용</th></tr><tr><td>노리는 것</td><td>함수포인터·vtable 슬롯</td></tr><tr><td>심는 것</td><td>system 주소·ROP 체인</td></tr><tr><td>방어(코드)</td><td>free 후 NULL, 스마트 포인터</td></tr><tr><td>방어(도구)</td><td>ASan(UAF 탐지)</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">free(p); /* p=NULL 누락 */ ... strcpy(p) (개념)</pre><h4 class="mt-4">3-2. 심화 예제: 취약→패치 비교</h4><pre class="bg-light p-3 border rounded">// 취약: 해제 후 호출 가능 상태 방치
+free(obj);
+obj->run();        // UAF! 해제된 vtable 참조
+// 패치: 즉시 무효화
+free(obj);
+obj = NULL;        // 이후 호출 시 안전하게 crash(탐지 가능)
+// 공격 개념: free 직후 같은 크기 malloc으로 함수포인터 덮기
+// char *evil = malloc(sizeof(Obj)); strcpy(evil, payload);</pre><h4 class="mt-4">4. 실습</h4><ol><li>취약 코드 1개를 찾아 패치 방법을 적는다.</li><li>위 예제의 호출 시점을 그림에 표시한다.</li><li>재할당으로 덮이는 바이트를 계산한다.</li><li>ASan 빌드로 UAF 탐지 메시지를 확인한다.</li><li>패치 전후 동작을 표로 비교한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>근본 원인은?</li><li>안전한 코딩 습관은?</li><li>왜 함수포인터가 노려지는가?</li><li>ASan의 역할은?</li><li>UAF와 double-free의 차이는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>해제 후 포인터 무효화 누락이다.</li><li>free 직후 NULL 대입, 소유권 명확화이다.</li><li>호출 한 번으로 실행 흐름이 바뀌기 때문이다.</li><li>컴파일·실행 시점에 UAF를 탐지해 위치를 알려준다.</li><li>UAF는 해제 후 사용, double-free는 두 번 해제이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 UAF 발동</h4><div class="mermaid">sequenceDiagram
+  participant P as 프로그램
+  participant H as 힙
+  P->>H: free (NULL 누락)
+  P->>H: malloc 공격 데이터
+  H-->>P: 같은 자리 재배정
+  P->>H: 옛 포인터 호출
+  H-->>P: 공격 주소 실행</div><p class="text-muted small">읽는 법: 같은 자리에 새 물건을 들이는 것이 핵심입니다. 호출하는 쪽은 자리가 바뀐 줄 모릅니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>한 경로에서만 NULL 처리하고 예외 경로를 놓치는 경우</li><li>UAF를 이론으로만 알고 ASan 실습을 빼먹는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="pwnable-l07-01.html">← Heap 기초</a><a class="btn btn-primary" href="pwnable-l09-01.html">실전 pwn CTF 풀이 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

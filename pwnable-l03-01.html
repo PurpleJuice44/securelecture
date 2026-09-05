@@ -16,9 +16,29 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>execve('/bin/sh') 호출 기계어</li><li>NX가 켜지면 스택 실행 불가</li><li>쉘코드 길이·널바이트 제약</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>execve('/bin/sh') 호출 기계어</li><li>NX가 켜지면 스택 실행 불가</li><li>쉘코드 길이·널바이트 제약</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">msfvenom으로 실습용 페이로드 생성 관찰 (실습 VM)</pre>
-<h4 class="mt-4">4. 실습</h4><p>NX on/off에 따른 동작 차이를 기록한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>NX의 역할은?</li><li>널바이트가 문제되는 이유는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 셸코드의 3제약</h4><p>셸코드는 <strong>짧고·널 없이·실행 가능하게</strong> 만들어야 합니다. <code>execve("/bin/sh")</code> 호출을 기계어로 옮기되, 문자열 종료자인 널바이트가 끼면 복사가 끊기고, 스택이 실행 금지(NX)면 소용없습니다.</p><div class="mermaid">flowchart TD
+  C["C 코드<br/>execve 호출"] --> A["어셈블리<br/>레지스터 세팅"]
+  A --> M["기계어 추출<br/>objdump"]
+  M --> N{"널바이트 포함?"}
+  N -->|예| R["우회 기법<br/>xor·분할"]
+  N -->|아니오| L{"버퍼에 들어가나"}
+  L -->|아니오| S["축소·분할"]
+  L -->|예| X["NX 확인으로<br/>다음 장 분기"]</div><p class="text-muted small">읽는 법: 널 제거→길이 축소의 순서로 다듬습니다. NX가 켜져 있으면 셸코드 대신 ROP(L4)로 갑니다.</p><h4 class="mt-4">2-3. 제약 대응표</h4><table class="table table-sm table-bordered"><tr><th>제약</th><th>원인</th><th>대응</th></tr><tr><td>널바이트</td><td>strcpy 등이 끊김</td><td>xor 인코딩·레지스터 초기화 우회</td></tr><tr><td>길이</td><td>작은 버퍼</td><td>스테이지 분할·짧은 코드</td></tr><tr><td>NX</td><td>스택 실행 금지</td><td>ROP·ret2libc (L4)</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">msfvenom으로 실습용 페이로드 생성 관찰 (실습 VM)</pre><h4 class="mt-4">3-2. 심화 예제: 생성·검증 루틴(실습 VM)</h4><pre class="bg-light p-3 border rounded"># 1) msfvenom으로 조건별 생성 관찰
+msfvenom -p linux/x86/exec CMD=/bin/sh -b '\x00' -f c
+# -b '\x00': 널바이트 제외 옵션의 효과를 비교
+# 2) 길이·널 포함 여부 점검
+python3 -c "sc=b'...'; print(len(sc), b'\x00' in sc)"
+# 3) NX on/off 동작 비교 (대응 이해용)
+# gcc -z execstack -o vuln_nxoff vuln.c  (실행 허용)
+# gcc -z noexecstack -o vuln_nxon vuln.c (실행 금지)</pre><h4 class="mt-4">4. 실습</h4><ol><li>NX on/off에 따른 동작 차이를 기록한다.</li><li>널바이트 포함·제외 페이로드를 비교한다.</li><li>페이로드 길이를 재고 버퍼 크기와 대조한다.</li><li>msfvenom 옵션(<code>-b·-f</code>) 효과를 표로 정리한다.</li><li>NX가 켜진 경우의 다음 수를 한 줄로 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>NX의 역할은?</li><li>널바이트가 문제되는 이유는?</li><li>셸코드가 짧아야 하는 이유는?</li><li>msfvenom의 <code>-b</code> 옵션 역할은?</li><li>NX on에서 셸코드가 실패하면 대안은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>스택·힙 등 데이터 영역의 실행을 금지하는 것이다.</li><li>문자열 복사가 거기서 끊겨 뒷부분이 전달되지 않기 때문이다.</li><li>작은 버퍼에 들어가야 하기 때문이다.</li><li>제외할 바이트(나쁜 문자) 지정이다.</li><li>ROP·ret2libc(L4)로 실행 없이 공격한다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 셸코드 검사</h4><div class="mermaid">sequenceDiagram
+  participant A as 공격자
+  participant P as 페이로드
+  participant V as 검증
+  A->>P: 셸코드 생성
+  P->>V: 널바이트 검사
+  V->>V: 길이 검사
+  V->>V: NX 환경 시험
+  V-->>A: 통과·수정 판정</div><p class="text-muted small">읽는 법: 생성→검사→시험의 고리입니다. 검사 3종을 통과해야 실전 투입 자격이 생깁니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>아키텍처(x86·x64) mismatch 페이로드를 쓰는 경우</li><li>널 검사를 빼먹고 통째로 실패하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="pwnable-l02-01.html">← RET 덮기와 rip 장악</a><a class="btn btn-primary" href="pwnable-l04-01.html">NX 우회와 ROP →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
