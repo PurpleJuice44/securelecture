@@ -16,10 +16,29 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>시저: 알파벳 밀기(키=이동 수)</li><li>빈도분석으로 키 추측</li><li>키 공간이 작으면 무차별대입 가능</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>시저: 알파벳 밀기(키=이동 수)</li><li>빈도분석으로 키 추측</li><li>키 공간이 작으면 무차별대입 가능</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">KHOOR → 키 3 역이동 → HELLO</pre>
-<h4 class="mt-4">4. 실습</h4><p>암호문 1개를 빈도분석으로 해독한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>키 공간이란?</li><li>빈도분석의 원리는?</li></ol>
-<div class="d-flex justify-content-between mt-5"><a class="btn btn-primary" href="crypto-l01-01.html">인코딩과 암호의 구분 →</a></div></main>
+<h4 class="mt-4">2-2. 동작 원리 심화: 왜 고전암호는 깨지는가</h4><p>시저 암호의 키는 고작 26가지입니다. <strong>키 공간이 작으면 전부 대입</strong>하면 되고, 긴 문장이면 <strong>글자 빈도</strong>가 언어를 폭로합니다. 현대 암호는 이 두 길을 모두 막는 것부터 시작합니다.</p><div class="mermaid">flowchart TD
+  C["암호문 입수"] --> K{"키 공간 크기?"}
+  K -->|26가지| B["무차별대입<br/>전부 복호화"]
+  K -->|큼| F["빈도분석<br/>e·t·a 순서 대조"]
+  B --> P["읽히는 후보 확정"]
+  F --> P
+  P --> L["현대암호 필요성<br/>다음 장으로"]</div><p class="text-muted small">읽는 법: 키가 적으면 대입, 문장이 길면 빈도입니다. 둘 중 하나라도 통하면 그 암호는 깨진 것입니다.</p><h4 class="mt-4">2-3. 고전암호 비교표</h4><table class="table table-sm table-bordered"><tr><th>암호</th><th>키</th><th>깨는 법</th></tr><tr><td>시저</td><td>이동 수 26가지</td><td>무차별대입</td></tr><tr><td>단일치환</td><td>26! 배열</td><td>빈도분석</td></tr><tr><td>비즈네르</td><td>키워드 반복</td><td>키 길이 추정+빈도</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">KHOOR → 키 3 역이동 → HELLO</pre><h4 class="mt-4">3-2. 심화 예제: 파이썬으로 깨보기</h4><pre class="bg-light p-3 border rounded"># 1) 시저 무차별대입 (26가지 전부)
+ct = "KHOOR"
+for k in range(26):
+    pt = "".join(chr((ord(c)-65-k) % 26 + 65) for c in ct)
+    print(k, pt)
+# 2) 빈도분석 힌트 (가장 흔한 글자 → e 추정)
+from collections import Counter
+print(Counter("L FDPH L VDZ ...".replace(" ", "")))
+# 3) 키 공간 계산: 26 vs 2^128 비교
+print(26, 2**128)</pre><h4 class="mt-4">4. 실습</h4><ol><li>암호문 1개를 빈도분석으로 해독한다.</li><li>26가지 대입 결과를 표로 만들고 읽히는 행을 고른다.</li><li>가장 흔한 글자 3개로 키를 추정한다.</li><li>키 공간 26과 2^128을 비교해 한 줄로 적는다.</li><li>시저 암호화·복호화 함수 1개를 직접 짠다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>키 공간이란?</li><li>빈도분석의 원리는?</li><li>단일치환이 시저보다 강한 이유는?</li><li>그래도 빈도분석에 깨지는 이유는?</li><li>현대 암호가 키 공간을 크게 잡는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>가능한 키의 총 가짓수이다.</li><li>언어별 글자 출현 빈도를 이용해 치환 대응을 추측하는 것이다.</li><li>키 공간이 26!로 크기 때문이다.</li><li>치환 후에도 원문의 빈도 분포가 그대로 남기 때문이다.</li><li>무차별대입을 물리적으로 불가능하게 하기 위해서이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 해독 순서</h4><div class="mermaid">sequenceDiagram
+  participant A as 해독자
+  participant B as 무차별대입
+  participant F as 빈도분석
+  A->>B: 키 26개 전수
+  B-->>A: 실패 시 다음으로
+  A->>F: 빈도 대조
+  F-->>A: 키 추정·해독</div><p class="text-muted small">읽는 법: 쉬운 것(대입)부터 시도하고, 안 되면 통계(빈도)로 갑니다. 이 순서는 이후 CTF에서도 그대로 통합니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>짧은 암호문에 빈도분석을 적용해 오판하는 경우. 표본이 적으면 빈도가 흔들린다.</li><li>대소문자·공백 처리를 빼먹고 복호화가 어긋나는 경우</li></ul><div class="d-flex justify-content-between mt-5"><a class="btn btn-outline-secondary" href="field-crypto.html">← 분야 목차</a><a class="btn btn-primary" href="crypto-l01-01.html">인코딩과 암호의 구분 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><button id="toTop" class="btn btn-dark rounded-circle" title="맨 위로">↑</button><script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:"base",securityLevel:"loose"});var t=document.getElementById("toTop");window.addEventListener("scroll",function(){t.style.display=window.scrollY>400?"block":"none"});t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});</script></body></html>

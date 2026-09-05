@@ -10,6 +10,27 @@
 <main class="col-lg-9 col-md-8 p-4"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">목차</a></li>
 <li class="breadcrumb-item active">🔐 암호학</li></ol></nav>
 <h1>🔐 암호학</h1><p class="lead">암호의 원리와 실수. 고전암호부터 RSA·TLS까지.</p>
+<h3 class="mt-4">분야 아키텍처: 지켜야 할 3가지 약속</h3><p>암호학의 목표는 <strong>기밀성·무결성·인증</strong>입니다. 고전암호에서 시작해 현대 대칭키·공개키·해시로 도구를 갖추고, 취약점 장에서는 약속이 깨지는 지점을 배웁니다.</p>
+<div class="mermaid">flowchart TD
+  C["고전암호<br/>시저·빈도분석"] --> S["대칭키<br/>AES·ECB pitfalls"]
+  S --> P["공개키<br/>RSA·키교환"]
+  P --> H["해시·서명<br/>무결성·인증"]
+  H --> V["취약점 분석<br/>저지수·패딩오라클"]
+  V --> T["TLS·현대암호<br/>실전 조합"]</div>
+<p class="text-muted small">읽는 법: 위에서 아래로가 도구의 진화이자 공격 표면의 이동입니다. 각 단계의 수학적 가정이 깨지면 다음 장의 공격이 됩니다.</p>
+<h3 class="mt-4">학습 로드맵</h3><p>고전암호로 감을 잡고 대칭키·공개키·해시를 차례로 익힌 뒤, 취약점 분석과 TLS로 마무리합니다.</p>
+<div class="mermaid">flowchart LR
+  C0["L0 고전암호"] --> C1["L1 인코딩·암호"]
+  C1 --> C2["L2 대칭키 AES"]
+  C2 --> C3["L3 RSA 기초"]
+  C3 --> C4["L4 해시"]
+  C4 --> C5["L5 ECB 취약점"]
+  C5 --> C6["L6 RSA 저지수"]
+  C6 --> C7["L7 패딩오라클"]
+  C7 --> C8["L8 해시 크랙"]
+  C8 --> C9["L9 Crypto CTF"]
+  C9 --> C10["L10 TLS·현대암호"]</div>
+<p class="text-muted small">읽는 법: L0~L4는 도구 익히기, L5~L8은 깨뜨리기, L9~L10은 실전 조합입니다.</p>
 <p><span class="badge text-bg-info">총 11장</span> <span class="badge text-bg-light text-dark border">Level = 막(難易度) · 장 = 기술</span></p>
 <h4 class="mt-4"><span class="badge text-bg-secondary">Level 0</span></h4><div class="row g-3"><div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
 <h6 class="card-title">고전 암호</h6><p class="card-text small text-muted">시저 암호와 빈도분석을 체험한다.</p>

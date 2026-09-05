@@ -16,9 +16,29 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>john/hashcat 사용법</li><li>rockyou 사전 활용</li><li>솔트·반복횟수가 방어력</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>john/hashcat 사용법</li><li>rockyou 사전 활용</li><li>솔트·반복횟수가 방어력</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">john --wordlist=rockyou.txt hash.txt  (실습 해시만)</pre>
-<h4 class="mt-4">4. 실습</h4><p>실습 해시 1개를 크랙해본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>사전공격의 원리는?</li><li>방어 2가지는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 사전공격의 경제학</h4><p>사람은 뻔한 비밀번호를 씁니다. 공격자는 <strong>자주 쓰는 목록(rockyou 등)으로 해시를 대입</strong>해봅니다. 솔트가 없고 빠르면 수십억 개를 순식간에 시험하므로, 약한 비밀번호는 즉시 뚫립니다.</p><div class="mermaid">flowchart TD
+  H["유출 해시"] --> T{"형식 판별<br/>길이·$접두>"}
+  T --> J["john 실행<br/>사전 대입"]
+  T --> C["hashcat 실행<br/>GPU 가속"]
+  J --> R{"적중?"}
+  C --> R
+  R -->|예| P["평문 복원"]
+  R -->|아니오| R2["규칙·증강 대입"]</div><p class="text-muted small">읽는 법: 형식 판별→사전 대입→규칙 확장의 순서입니다. 솔트+느린 해시가 있으면 경제성이 무너집니다.</p><h4 class="mt-4">2-3. 도구·방어표</h4><table class="table table-sm table-bordered"><tr><th>구분</th><th>내용</th></tr><tr><td>john</td><td>CPU 사전·규칙 공격</td></tr><tr><td>hashcat</td><td>GPU 고속 대입</td></tr><tr><td>rockyou.txt</td><td>1400만 실제 유출 목록</td></tr><tr><td>방어</td><td>솔트+bcrypt·argon2</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">john --wordlist=rockyou.txt hash.txt  (실습 해시만)</pre><h4 class="mt-4">3-2. 심화 예제: 크랙 실습 루틴(실습 해시만)</h4><pre class="bg-light p-3 border rounded"># 1) 해시 형식 판별
+hashid "5d41402abc4b2a76b9719d911017c592"  # 예시 MD5
+# 2) john 사전 공격 (실습 해시 파일에만!)
+john --wordlist=/usr/share/wordlists/rockyou.txt --format=Raw-MD5 hash.txt
+john --show --format=Raw-MD5 hash.txt
+# 3) hashcat GPU 공격 (모드 번호 확인)
+# hashcat -m 0 hash.txt rockyou.txt  (0=MD5, 1000=NTLM, 1800=sha512crypt)
+# 4) 방어 확인: 솔트·반복횟수 있는 형식 식별하기</pre><h4 class="mt-4">4. 실습</h4><ol><li>실습 해시 1개를 크랙해본다.</li><li>hashid로 형식을 먼저 판별한다.</li><li>사전 크기와 소요 시간을 기록한다.</li><li>솔트 있는 해시의 크랙 난이도를 비교한다.</li><li>방어 2종을 코드로 설명한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>사전공격의 원리는?</li><li>방어 2가지는?</li><li>rockyou가 강력한 이유는?</li><li>솔트가 있으면 사전공격이 어려운 이유는?</li><li>무단 크랙이 불법인 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>후보 목록의 해시를 미리 계산해 대조하는 것이다.</li><li>솔트와 느린 해시(bcrypt·argon2)이다.</li><li>실제 유출된 진짜 비밀번호들이라 적중률이 높기 때문이다.</li><li>후보마다 솔트를 붙여 다시 계산해야 해 표를 재사용할 수 없기 때문이다.</li><li>타인 계정 접근 시도 자체가 침해 행위이기 때문이다. 실습 해시만 다룬다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 크랙 파이프라인</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant I as 식별
+  participant C as 크래커
+  A->>I: 해시 형식 판별
+  I-->>A: 모드 번호
+  A->>C: 사전 대입 실행
+  C-->>A: 적중·실패
+  A->>C: 규칙 확장</div><p class="text-muted small">읽는 법: 판별→대입→확장의 순서입니다. 판별을 틀리면 대입이 전부 헛수고가 됩니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>모드 번호를 틀려 엉뚱한 해시로 대입하는 경우</li><li>실습 범위를 벗어난 해시를 다루는 경우. 절대 금지이다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="crypto-l07-01.html">← 패딩 오라클 공격</a><a class="btn btn-primary" href="crypto-l09-01.html">Crypto CTF 실전 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

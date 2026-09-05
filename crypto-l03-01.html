@@ -16,9 +16,29 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>공개키로 암호화, 개인키로 복호화</li><li>안전성 기반: 큰 수 소인수분해 어려움</li><li>전자서명에도 사용</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>공개키로 암호화, 개인키로 복호화</li><li>안전성 기반: 큰 수 소인수분해 어려움</li><li>전자서명에도 사용</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">작은 소수(p=61,q=53)로 손계산 체험 (개념)</pre>
-<h4 class="mt-4">4. 실습</h4><p>키 쌍 생성 과정을 순서대로 적어본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>공개키와 개인키의 역할은?</li><li>소인수분해가 어려운 이유는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 열쇠 두 개의 수학</h4><p>RSA는 <strong>곱하기는 쉽고 소인수분해는 어려운</strong> 비대칭에 기대어 섭니다. 두 소수 p·q를 곱해 n을 만들고, 공개키(e, n)는 나누고 개인키(d)는 숨깁니다. 암호화는 공개키로, 복호화는 개인키로만 됩니다.</p><div class="mermaid">flowchart TD
+  P["소수 p·q 선택"] --> N["n = p×q 계산"]
+  N --> E["공개키 e 선택"]
+  E --> D["개인키 d 계산"]
+  E --> PUB["공개키 배포<br/>암호화·서명검증"]
+  D --> PRI["개인키 보관<br/>복호화·서명"]
+  PUB --> C["암호문"]
+  C --> PRI</div><p class="text-muted small">읽는 법: 왼쪽이 키 생성, 오른쪽이 사용입니다. n을 소인수분해하면 d가 새므로, 소수가 클수록 안전합니다.</p><h4 class="mt-4">2-3. 용도표</h4><table class="table table-sm table-bordered"><tr><th>용도</th><th>쓰는 키</th><th>푸는 키</th></tr><tr><td>기밀성(암호화)</td><td>수신자 공개키</td><td>수신자 개인키</td></tr><tr><td>인증(서명)</td><td>송신자 개인키</td><td>송신자 공개키</td></tr><tr><td>키 교환</td><td>일회성+공개키 조합</td><td>TLS 핸드셰이크</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">작은 소수(p=61,q=53)로 손계산 체험 (개념)</pre><h4 class="mt-4">3-2. 심화 예제: 손계산과 openssl</h4><pre class="bg-light p-3 border rounded"># 손계산 (p=61, q=53)
+# n = 61*53 = 3233, phi = 60*52 = 3120
+# e=17 선택 → d=2753 (17*2753 mod 3120 = 1)
+# 암호화: c = m^e mod n / 복호화: m = c^d mod n
+python3 -c "print(pow(65, 17, 3233), pow(2790, 2753, 3233))"
+# openssl 실전 키 쌍
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out priv.pem
+openssl rsa -pubout -in priv.pem -out pub.pem
+openssl pkeyutl -encrypt -pubin -inkey pub.pem -in plain.txt -out enc.bin
+openssl pkeyutl -decrypt -inkey priv.pem -in enc.bin -out dec.txt</pre><h4 class="mt-4">4. 실습</h4><ol><li>키 쌍 생성 과정을 순서대로 적어본다.</li><li>p=61·q=53 손계산을 따라 해본다.</li><li>openssl로 2048비트 키 쌍을 만든다.</li><li>공개키 암호화→개인키 복호화 왕복을 수행한다.</li><li>개인키 유출 시 파급을 한 줄로 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>공개키와 개인키의 역할은?</li><li>소인수분해가 어려운 이유는?</li><li>암호화와 서명의 키 사용이 반대인 이유는?</li><li>키 길이가 길수록 좋은 점과 나쁜 점은?</li><li>RSA로 긴 파일을 직접 암호화하지 않는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>공개키는 나누어 암호화·검증에, 개인키는 보관해 복호화·서명에 쓴다.</li><li>큰 수의 소인수분해에 알려진 빠른 방법이 없기 때문이다.</li><li>암호화는 받는 사람만 풀게, 서명은 보낸 사람이 맞음을 보이기 위해서이다.</li><li>안전해지지만 연산이 느려진다.</li><li>느리고 길이 제한이 있어 대칭키를 감싸는 용도로 쓴다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 키 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 송신자
+  participant B as 수신자
+  B->>A: 공개키 전달
+  A->>A: 공개키로 암호화
+  A->>B: 암호문 전송
+  B->>B: 개인키로 복호화</div><p class="text-muted small">읽는 법: 공개키는 길에 뿌려도 되고, 개인키는 절대 길에 내놓지 않습니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>공개키로 복호화하려 드는 경우. 방향을 반대로 이해한 것이다.</li><li>작은 소수·짧은 키를 실전에 쓰는 경우. 2048비트 이상이 기준이다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="crypto-l02-01.html">← 대칭키와 AES</a><a class="btn btn-primary" href="crypto-l04-01.html">해시와 무결성 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

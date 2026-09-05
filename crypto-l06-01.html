@@ -16,9 +16,24 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>e=3 + 짧은 패딩 → 세제곱근 공격 개념</li><li>Hastad broadcast: 같은 평문 다수 암호문</li><li>패딩(OAEP) 필수</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>e=3 + 짧은 패딩 → 세제곱근 공격 개념</li><li>Hastad broadcast: 같은 평문 다수 암호문</li><li>패딩(OAEP) 필수</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">같은 m을 e=3으로 3곳에 암호화 → 복원 가능 (개념)</pre>
-<h4 class="mt-4">4. 실습</h4><p>취약 조건 2가지를 정리한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>e가 작으면 왜 위험한가?</li><li>OAEP의 역할은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 작은 e의 재앙</h4><p>e=3은 연산이 빠르다는 이유로 쓰였지만, <strong>패딩이 짧으면 세제곱근으로 풀리고</strong>, <strong>같은 평문을 여러 키로 암호화하면 연립으로 풀립니다</strong>(Håstad broadcast). 패딩(OAEP)이 없으면 RSA는 교과서식 장난감에 불과합니다.</p><div class="mermaid">flowchart TD
+  M["평문 m<br/>짧은 패딩"] --> E["e=3 암호화<br/>c = m^3 mod n"]
+  E --> R{"m^3이 n보다 작은가"}
+  R -->|예| C["정수 세제곱근<br/>그대로 복원"]
+  R -->|아니오| H["같은 m 3곳 암호화<br/>CRT 연립"]
+  H --> B["broadcast 복원"]</div><p class="text-muted small">읽는 법: 작은 e+짧은 패딩, 또는 같은 평문 반복이 보이면 저지수 공격을 의심합니다. 대응은 OAEP 패딩입니다.</p><h4 class="mt-4">2-3. 취약 조건표</h4><table class="table table-sm table-bordered"><tr><th>조건</th><th>공격</th><th>대응</th></tr><tr><td>e=3 + 짧은 패딩</td><td>세제곱근</td><td>e=65537·OAEP</td></tr><tr><td>같은 m, 다른 n 3개</td><td>Håstad broadcast</td><td>랜덤 패딩</td></tr><tr><td> textbook RSA (무패딩)</td><td>결정성 악용</td><td>OAEP 필수</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">같은 m을 e=3으로 3곳에 암호화 → 복원 가능 (개념)</pre><h4 class="mt-4">3-2. 심화 예제: 세제곱근 손계산</h4><pre class="bg-light p-3 border rounded"># m^3 < n 이면 mod가 무의미해진다
+# 예: m=10, n=1000000 → c = 1000 → 세제곱근 = 10
+python3 -c "c=1000; print(round(c**(1/3)))"
+# 큰 수 정밀 계산 (gmpy2 이로운 지점)
+# from gmpy2 import iroot
+# print(iroot(c, 3)[0])
+# Håstad 개념: c1·c2·c3 + n1·n2·n3 → CRT로 m^3 복원 → 세제곱근</pre><h4 class="mt-4">4. 실습</h4><ol><li>취약 조건 2가지를 정리한다.</li><li>작은 수 예제로 세제곱근 복원을 손계산한다.</li><li>e=3과 e=65537의 차이를 한 줄로 적는다.</li><li>OAEP 패딩 유무를 코드에서 판별하는 눈을 기른다.</li><li>같은 평문 반복 사용이 위험한 이유를 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>e가 작으면 왜 위험한가?</li><li>OAEP의 역할은?</li><li>세제곱근 공격의 전제는?</li><li>Håstad 공격에 필요한 것은?</li><li>textbook RSA를 쓰지 말아야 하는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>거듭제곱 결과가 n보다 작아 mod가 무력화되기 때문이다.</li><li>랜덤 패딩으로 결정성을 깨고 대수 구조를 숨기는 것이다.</li><li>m^e가 n보다 작은 것이다.</li><li>같은 평문의 서로 다른 n 암호문 e개 이상이다.</li><li>결정적이라 선택 평문 공격 등에 그대로 노출되기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 공격 판별</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant P as 파라미터
+  A->>P: e 값 확인
+  P-->>A: e=3 발견
+  A->>P: 패딩·반복 확인
+  P-->>A: 저지수 공격 판정</div><p class="text-muted small">읽는 법: e 확인→패딩·반복 확인의 2단계입니다. e가 작다고 무조건 뚫리는 것은 아닙니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>e=3이면 무조건 깨진다고 단정하는 경우. 패딩·크기 조건이 맞아야 한다.</li><li>서로 다른 패딩의 암호문을 모아 Håstad를 시도하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="crypto-l05-01.html">← ECB 모드 취약점</a><a class="btn btn-primary" href="crypto-l07-01.html">패딩 오라클 공격 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

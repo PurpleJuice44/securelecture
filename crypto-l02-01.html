@@ -16,9 +16,26 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>키 공유가 최대 난제</li><li>IV(초기벡터)는 매번 다르게</li><li>모드(ECB/CBC/GCM)에 따라 안전성 차이</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>키 공유가 최대 난제</li><li>IV(초기벡터)는 매번 다르게</li><li>모드(ECB/CBC/GCM)에 따라 안전성 차이</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">openssl enc -aes-256-cbc -in plain.txt -out enc.bin (실습)</pre>
-<h4 class="mt-4">4. 실습</h4><p>암·복호화 왕복을 수행해본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>키 공유 문제란?</li><li>IV를 재사용하면 안 되는 이유는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 같은 키의 두 가지 숙제</h4><p>대칭키는 암호화·복호화에 <strong>같은 키</strong>를 씁니다. 그래서 두 숙제가 생깁니다. 키를 어떻게 안전히 나누나(키 공유), 같은 키로 여러 번 암호화해도 들키지 않나(모드·IV)입니다.</p><div class="mermaid">flowchart TD
+  K["키 공유<br/>만나서 직접? 공개키로 감싸기?"] --> E["암호화<br/>AES-256"]
+  E --> I{"IV·모드 선택"}
+  I -->|ECB| F["패턴 노출<br/>L5에서 폭로"]
+  I -->|CBC·GCM| S["안전<br/>IV 매번 변경"]
+  S --> D["복호화<br/>같은 키"]</div><p class="text-muted small">읽는 법: 키 공유와 모드 선택이 대칭키의 전부입니다. 둘 중 하나라도 틀리면 AES 자체는 멀쩡해도 시스템이 깨집니다.</p><h4 class="mt-4">2-3. 모드 비교표</h4><table class="table table-sm table-bordered"><tr><th>모드</th><th>특징</th><th>판정</th></tr><tr><td>ECB</td><td>블록별 독립 암호화</td><td>사용 금지</td></tr><tr><td>CBC</td><td>이전 결과와 엮음, IV 필요</td><td>조건부 사용</td></tr><tr><td>GCM</td><td>암호화+인증 동시</td><td>권장</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">openssl enc -aes-256-cbc -in plain.txt -out enc.bin (실습)</pre><h4 class="mt-4">3-2. 심화 예제: 왕복과 모드 비교</h4><pre class="bg-light p-3 border rounded"># 1) CBC 왕복 (IV는 매번 랜덤 생성)
+openssl enc -aes-256-cbc -salt -pbkdf2 -in plain.txt -out enc.bin
+openssl enc -d -aes-256-cbc -pbkdf2 -in enc.bin -out dec.txt
+diff plain.txt dec.txt && echo "왕복 성공"
+# 2) 같은 평문을 두 번 암호화해 비교 (CBC는 결과가 매번 다름)
+openssl enc -aes-256-cbc -salt -pbkdf2 -in plain.txt | sha256sum
+openssl enc -aes-256-cbc -salt -pbkdf2 -in plain.txt | sha256sum
+# 3) GCM 권장 확인 (인증까지 한 번에)
+python3 -c "from Crypto.Cipher import AES; print('GCM은 변조 탐지 내장')"</pre><h4 class="mt-4">4. 실습</h4><ol><li>암·복호화 왕복을 수행해본다.</li><li>같은 평문을 두 번 암호화해 결과가 다른지 확인한다.</li><li>IV를 고정했을 때와 랜덤일 때를 비교한다.</li><li>ECB·CBC 결과를 비교 관찰한다(L5 연계).</li><li>키 공유 방법 2가지를 적어본다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>키 공유 문제란?</li><li>IV를 재사용하면 안 되는 이유는?</li><li>ECB가 위험한 이유는?</li><li>GCM이 권장되는 이유는?</li><li>비밀번호에서 직접 키를 만들면 안 되는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>같은 키를双方이 안전히 나누는 방법이 마땅치 않은 것이다.</li><li>같은 평문이 같은 암호문이 되어 패턴이 새기 때문이다.</li><li>블록별 독립이라 평문 패턴이 그대로 드러나기 때문이다.</li><li>기밀성과 변조 탐지를 동시에 제공하기 때문이다.</li><li>엔트로피가 낮아 사전 대입에 취약하므로 KDF·솔트가 필요하기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 암호화 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 송신자
+  participant B as 수신자
+  A->>A: 키 공유 (별도 경로)
+  A->>A: 랜덤 IV 생성·CBC 암호화
+  A->>B: IV + 암호문 전송
+  B->>B: 같은 키로 복호화</div><p class="text-muted small">읽는 법: 키 공유가 전제이고, IV는 공개해도 되지만 매번 달라야 합니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>IV를 고정 상수로 박아두는 경우. 솔트·IV는 난수가 원칙이다.</li><li>ECB를 기본값으로 쓰는 라이브러리 설정을 그대로 두는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="crypto-l01-01.html">← 인코딩과 암호의 구분</a><a class="btn btn-primary" href="crypto-l03-01.html">RSA 기초 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

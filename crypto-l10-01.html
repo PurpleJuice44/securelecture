@@ -16,10 +16,24 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>핸드셰이크: 인증서 검증 → 키 교환</li><li>전방안전성: 세션키 유출돼도 과거 보호</li><li>인증서 검증 실패 시 접속 금지</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>핸드셰이크: 인증서 검증 → 키 교환</li><li>전방안전성: 세션키 유출돼도 과거 보호</li><li>인증서 검증 실패 시 접속 금지</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">openssl s_client -connect example.com:443 (관찰만)</pre>
-<h4 class="mt-4">4. 실습</h4><p>인증서 정보를 읽어본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>전방안전성이란?</li><li>인증서 경고 시 해야 할 일은?</li></ol>
-<div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="crypto-l09-01.html">← Crypto CTF 실전</a></div></main>
+<h4 class="mt-4">2-2. 동작 원리 심화: 핸드셰이크 3막</h4><p>TLS 연결은 <strong>인증서 검증→키 교환→암호화 통신</strong>의 3막입니다. 서버가 인증서로 신분을 증명하고, 일회성 키를 나눈 뒤, 대칭키로 빠르게 주고받습니다. 전방안전성은 세션키가 새도 과거가 안 풀리는 성질입니다.</p><div class="mermaid">sequenceDiagram
+  participant B as 브라우저
+  participant S as 서버
+  B->>S: ClientHello (지원 방식)
+  S-->>B: 인증서 + ServerHello
+  B->>B: 인증서 검증 (체인·만료·도메인)
+  B->>S: 키 교환 (ECDHE)
+  S-->>B: 세션키 확정
+  B->>S: 대칭키 암호화 통신</div><p class="text-muted small">읽는 법: 검증→교환→통신의 순서입니다. 검증이 끝나기 전에는 어떤 비밀도 보내지 않습니다.</p><h4 class="mt-4">2-3. 개념표</h4><table class="table table-sm table-bordered"><tr><th>개념</th><th>설명</th></tr><tr><td>인증서</td><td>CA 서명으로 서버 신분 증명</td></tr><tr><td>ECDHE</td><td>일회성 키 교환, 전방안전성 제공</td></tr><tr><td>전방안전성</td><td>장기키 유출에도 과거 보호</td></tr><tr><td>HSTS</td><td>평문 접속 강제 차단</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">openssl s_client -connect example.com:443 (관찰만)</pre><h4 class="mt-4">3-2. 심화 예제: 인증서 읽기 루틴</h4><pre class="bg-light p-3 border rounded"># 1) 인증서 체인·만료·도메인 확인 (관찰만)
+openssl s_client -connect example.com:443 -servername example.com 2>/dev/null | openssl x509 -noout -subject -issuer -dates -ext subjectAltName
+# 2) 협상된 버전·암호스위트 확인
+openssl s_client -connect example.com:443 2>/dev/null | grep -E "Protocol|Cipher"
+# 3) 경고 상황 대처: 만료·도메인 불일치·자체서명 → 접속 중단이 정답</pre><h4 class="mt-4">4. 실습</h4><ol><li>인증서 정보를 읽어본다.</li><li>발급자·만료일·SAN을 표로 정리한다.</li><li>협상 버전을 확인하고 TLS 1.2 미만이면 지적한다.</li><li>인증서 경고 화면의 올바른 대처를 적는다.</li><li>전방안전성 지원 여부를 확인한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>전방안전성이란?</li><li>인증서 경고 시 해야 할 일은?</li><li>인증서가 증명하는 것은?</li><li>ECDHE의 일회성이 주는 이득은?</li><li>HSTS의 역할은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>장기키가 털려도 과거 통신은 안 풀리는 성질이다.</li><li>접속 중단이다. 예외 추가는 공격자 문을 여는 것이다.</li><li>해당 도메인의 서버가 맞다는 것이다.内容 신뢰가 아니다.</li><li>세션마다 새 키라 유출 파급이 해당 세션에 그친다.</li><li>브라우저가 평문 HTTP 접속을 원천 차단하게 하는 것이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 검증 순서</h4><div class="mermaid">flowchart TD
+  C["인증서 수신"] --> V["체인·서명 검증"]
+  V --> D["도메인·만료 확인"]
+  D --> K["키 교환"]
+  K --> E["암호화 통신"]
+  W["경고 발생"] --> S["접속 중단"]</div><p class="text-muted small">읽는 법: 경고가 뜨면 뒤 단계로 가지 않습니다. 예외 추가 버튼이 가장 위험한 버튼입니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>자물쇠=안전 사이트로 오해하는 경우. 피싱도 인증서를 단다.</li><li>인증서 검증 코드를 끄는 경우(verify=False). 절대 금지이다.</li></ul><div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="crypto-l09-01.html">← Crypto CTF 실전</a><a class="btn btn-outline-secondary" href="field-crypto.html">분야 목차 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><button id="toTop" class="btn btn-dark rounded-circle" title="맨 위로">↑</button><script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:"base",securityLevel:"loose"});var t=document.getElementById("toTop");window.addEventListener("scroll",function(){t.style.display=window.scrollY>400?"block":"none"});t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});</script></body></html>

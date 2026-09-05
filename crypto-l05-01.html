@@ -16,9 +16,26 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>ECB 펭귄 그림: 패턴이 그대로 노출</li><li>CBC/GCM 사용으로 대응</li><li>절대 ECB에 이미지·구조적 데이터 금지</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>ECB 펭귄 그림: 패턴이 그대로 노출</li><li>CBC/GCM 사용으로 대응</li><li>절대 ECB에 이미지·구조적 데이터 금지</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">ECB 암호화 이미지의 윤곽 노출 (개념 그림)</pre>
-<h4 class="mt-4">4. 실습</h4><p>ECB/CBC 암호 결과를 비교 관찰한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>ECB의 문제점은?</li><li>대응 모드는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 펭귄이 보이는 이유</h4><p>ECB는 각 블록을 <strong>독립적으로</strong> 암호화합니다. 같은 평문 블록은 같은 암호문 블록이 되므로, 이미지의 윤곽·반복 패턴이 그대로 드러납니다. 유명한 ECB 펭귄 그림이 그 증거입니다.</p><div class="mermaid">flowchart TD
+  P["평문 블록<br/>P1·P1·P2"] --> E["ECB 암호화<br/>각각 독립"]
+  E --> C["암호문<br/>C1·C1·C2"]
+  C --> L["패턴 노출<br/>같은 것은 같게"]
+  P2["같은 평문"] --> E2["CBC·GCM<br/>이전 결과와 엮음"]
+  E2 --> C2["매번 다른 암호문"]</div><p class="text-muted small">읽는 법: ECB는 같은 입력에 같은 출력이라 구조가 새고, CBC·GCM은 이전 블록과 엮어 구조를 지웁니다.</p><h4 class="mt-4">2-3. 모드 판정표</h4><table class="table table-sm table-bordered"><tr><th>상황</th><th>ECB</th><th>CBC·GCM</th></tr><tr><td>같은 평문 반복</td><td>들통남</td><td>매번 다름</td></tr><tr><td>이미지 암호화</td><td>윤곽 노출</td><td>노이즈화</td></tr><tr><td>사용 여부</td><td>금지</td><td>조건부·권장</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">ECB 암호화 이미지의 윤곽 노출 (개념 그림)</pre><h4 class="mt-4">3-2. 심화 예제: 반복 패턴 노출 실험</h4><pre class="bg-light p-3 border rounded"># 1) 같은 블록 반복 평문 준비 (16바이트 ×4 동일)
+python3 -c "open('rep.bin','wb').write(b'A'*16*4)"
+# 2) ECB 암호화 후 블록 비교 (앞 3블록이 같은지)
+openssl enc -aes-128-ecb -K 00112233445566778899aabbccddeeff -iv 0 -in rep.bin -out ecb.bin
+xxd -p -c 16 ecb.bin
+# 3) CBC로 같은 실험 (전부 다름)
+openssl enc -aes-128-cbc -K 00112233445566778899aabbccddeeff -iv 0102030405060708090a0b0c0d0e0f -in rep.bin -out cbc.bin
+xxd -p -c 16 cbc.bin</pre><h4 class="mt-4">4. 실습</h4><ol><li>ECB/CBC 암호 결과를 비교 관찰한다.</li><li>반복 블록의 암호문 동일 여부를 표로 기록한다.</li><li>이미지 파일에 ECB를 적용해 윤곽을 확인한다(개념).</li><li>CBC에 같은 실험을 해 차이를 적는다.</li><li>코드 속 ECB 사용처를 찾아 교체 방안을 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>ECB의 문제점은?</li><li>대응 모드는?</li><li>펭귄 그림이 유명해진 이유는?</li><li>이미지·DB 같은 구조적 데이터에 ECB를 쓰면 안 되는 이유는?</li><li>레거시 ECB를 당장 못 바꾼다면 최소 조치는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>같은 평문 블록이 같은 암호문이 되어 패턴이 새기 때문이다.</li><li>CBC·GCM이다.</li><li>암호화했는데도 그림이 보여 모드 선택의 중요성을 한눈에 보여주기 때문이다.</li><li>반복 구조가 암호문에 그대로 드러나 정보가 새기 때문이다.</li><li>신규는 GCM으로, 기존은 재암호화 계획을 세운다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 모드 교체</h4><div class="mermaid">sequenceDiagram
+  participant D as 개발자
+  participant C as 코드베이스
+  D->>C: ECB 사용처 검색
+  C-->>D: 목록 확보
+  D->>C: GCM으로 교체
+  C-->>D: 테스트·재암호화
+  D->>D: 완료 보고</div><p class="text-muted small">읽는 법: 찾아내기→바꾸기→다시 암호화하기의 순서입니다. 키·IV 관리도 함께 점검합니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>ECB가 기본값인 라이브러리 설정을 그대로 쓰는 경우</li><li>이미지 썸네일·압축 전 데이터에 ECB를 쓰는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="crypto-l04-01.html">← 해시와 무결성</a><a class="btn btn-primary" href="crypto-l06-01.html">RSA 저지수 취약점 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

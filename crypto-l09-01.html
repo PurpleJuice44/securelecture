@@ -16,9 +16,32 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>base64→고전→RSA→AES 순서로 의심</li><li>작은 수치는 손계산/스크립트</li><li>풀이 스크립트를 재사용 가능하게 작성</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>base64→고전→RSA→AES 순서로 의심</li><li>작은 수치는 손계산/스크립트</li><li>풀이 스크립트를 재사용 가능하게 작성</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">분류 체크리스트로 문제 1개 풀이</pre>
-<h4 class="mt-4">4. 실습</h4><p>Crypto 문제 1개를 풀이한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>분류가 중요한 이유는?</li><li>스크립트 재사용 팁은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 분류가 풀이의 8할</h4><p>Crypto 문제는 <strong>형태가 정답을 알려줍니다</strong>. 긴 base64는 인코딩, 작은 n은 RSA 손계산, 반복 암호문은 broadcast, 오류 차이는 오라클입니다. 분류→대응 장 매핑이 풀이 루틴의 전부입니다.</p><div class="mermaid">flowchart TD
+  Q["문제·파일 입수"] --> B{"base64·hex?"}
+  B -->|예| D["디코딩 루프<br/>L1"]
+  B -->|아니오| R{"RSA 파라미터?"}
+  R -->|작은 n·e| S["손계산·스크립트<br/>L3·L6"]
+  R -->|아니오| A{"AES·오류?"}
+  A -->|예| O["모드·오라클 분석<br/>L5·L7"]
+  A -->|아니오| H["해시 크랙<br/>L8"]</div><p class="text-muted small">읽는 법: 위에서 아래로가 분류 순서입니다. 분류가 맞으면 대응 장의 기법을 그대로 적용합니다.</p><h4 class="mt-4">2-3. 유형→대응표</h4><table class="table table-sm table-bordered"><tr><th>신호</th><th>유형</th><th>대응 장</th></tr><tr><td>n·e·c 숫자 3종</td><td>RSA 기초</td><td>L3·L6</td></tr><tr><td>IV·CBC 오류</td><td>패딩 오라클</td><td>L7</td></tr><tr><td>32·40·64 hex</td><td>해시</td><td>L4·L8</td></tr><tr><td>펭귄급 패턴</td><td>ECB</td><td>L5</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">분류 체크리스트로 문제 1개 풀이</pre><h4 class="mt-4">3-2. 심화 예제: 재사용 스크립트 상자</h4><pre class="bg-light p-3 border rounded"># base64 다중 디코딩
+import base64
+def autodecode(s, n=5):
+    for _ in range(n):
+        try: s = base64.b64decode(s).decode()
+        except Exception: break
+    return s
+# RSA 손계산 (작은 수)
+# from math import gcd
+# d = pow(e, -1, phi)  (python 3.8+)
+# m = pow(c, d, n)
+# 분류 로그 양식: 신호 → 유형 → 대응 장 → 결과</pre><h4 class="mt-4">4. 실습</h4><ol><li>Crypto 문제 1개를 풀이한다.</li><li>분류 근거 3줄을 먼저 적는다.</li><li>대응 장의 기법을 그대로 적용한다.</li><li>스크립트를 함수화해 상자에 넣는다.</li><li>Write-up에 분류→풀이를 기록한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>분류가 중요한 이유는?</li><li>스크립트 재사용 팁은?</li><li>n이 256비트 이하이면 의심하는 것은?</li><li>오류 메시지가 다르면 의심하는 것은?</li><li>풀리지 않을 때 돌아갈 곳은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>유형이 정해지면 기법이 정해져 탐색이 끝나기 때문이다.</li><li>입출력만 바꿔 끼우는 함수 형태로 만드는 것이다.</li><li>직접 소인수분해다.</li><li>패딩 오라클이다.</li><li>L1 디코딩과 분류 원점으로 돌아간다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 풀이 루프</h4><div class="mermaid">sequenceDiagram
+  participant S as 풀이자
+  participant C as 분류
+  participant T as 기법 적용
+  S->>C: 신호 수집
+  C-->>S: 유형 판정
+  S->>T: 대응 장 기법
+  T-->>S: 성공 또는 재분류</div><p class="text-muted small">읽는 법: 분류→적용→재분류의 고리입니다. 고리를 빨리 돌수록 풀이가 빨라집니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>분류 없이 무작정 도구를 돌리는 경우</li><li>한 유형에 집착해 재분류를 안 하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="crypto-l08-01.html">← 해시 크랙 실습</a><a class="btn btn-primary" href="crypto-l10-01.html">TLS와 현대 암호 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

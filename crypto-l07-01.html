@@ -16,9 +16,25 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>서버의 패딩 오류/정상 응답 차이 악용</li><li>한 바이트씩 추측해 평문 복원</li><li>대응: Encrypt-then-MAC, 오류 통합</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>서버의 패딩 오류/정상 응답 차이 악용</li><li>한 바이트씩 추측해 평문 복원</li><li>대응: Encrypt-then-MAC, 오류 통합</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">오류 응답 차이를 이용한 바이트 추측 (개념)</pre>
-<h4 class="mt-4">4. 실습</h4><p>대응 전/후 오류 메시지를 비교해본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>오라클이란 비유인가?</li><li>대응법은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 오류 메시지가 스파이가 되는 과정</h4><p>CBC 복호화 후 패딩이 틀리면 서버가 에러를 뱉습니다. 공격자는 마지막 바이트를 바꿔가며 <strong>에러가 안 나는 값을 찾아 평문을 한 바이트씩</strong> 복원합니다. 오류의 차이가 곧 오라클(신탁)입니다.</p><div class="mermaid">flowchart TD
+  C["암호문 변조<br/>마지막 바이트 변경"] --> S["서버 전송"]
+  S --> E{"패딩 오류?"}
+  E -->|예| N["다음 후보"]
+  N --> C
+  E -->|아니오| F["평문 바이트 확정"]
+  F --> B["앞 바이트로 이동"]</div><p class="text-muted small">읽는 법: 오류/정상의 1비트 신호로 1바이트를 알아냅니다. 느리지만 확실해서 자동화하면 전체가 풀립니다.</p><h4 class="mt-4">2-3. 대응표</h4><table class="table table-sm table-bordered"><tr><th>대응</th><th>원리</th></tr><tr><td>Encrypt-then-MAC</td><td>복호화 전 변조 검사</td></tr><tr><td>오류 통합</td><td>패딩·MAC 오류 구분 불가</td></tr><tr><td>GCM 등 AEAD</td><td>인증 내장 모드</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">오류 응답 차이를 이용한 바이트 추측 (개념)</pre><h4 class="mt-4">3-2. 심화 예제: 오라클 판별 루틴(개념)</h4><pre class="bg-light p-3 border rounded"># 서버 응답 2종을 먼저 확보 (실습 앱)
+# 정상: "OK" / 패딩 오류: "Padding error"
+# 1) 마지막 바이트 0x00~0xFF 대입하며 정상 응답 탐색
+# for b in range(256): send(iv[:15] + bytes([b]))
+# 2) 정상이 나온 b로 중간값 역산 → 평문 바이트 확정
+# 3) 확정 바이트를 패딩 형태로 고정 후 앞 바이트로 이동
+# 포인트: 오류 메시지가 구분되면 오라클 성립</pre><h4 class="mt-4">4. 실습</h4><ol><li>대응 전/후 오류 메시지를 비교해본다.</li><li>정상·오류 응답의 구분 가능성을 판정한다.</li><li>1바이트 복원 과정을 순서도로 그린다.</li><li>대응 3종을 코드 위치와 함께 정리한다.</li><li>자동화 시 요청 속도와 차단 관계를 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>오라클이란 비유인가?</li><li>대응법은?</li><li>오라클 성립 조건은?</li><li>한 바이트 복원에 필요한 요청 수는?</li><li>MAC-then-Encrypt가 취약한 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>예·아니오로 답하는 신탁처럼 오류 차이로 정보를 주는 것이다.</li><li>Encrypt-then-MAC·오류 통합·AEAD이다.</li><li>패딩 오류와 그 외 오류가 구분되는 것이다.</li><li>최대 256회이다.</li><li>복호화 후 검증이라 패딩 신호가 새기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 오라클 루프</h4><div class="mermaid">sequenceDiagram
+  participant A as 공격자
+  participant S as 서버
+  A->>S: 변조 블록 전송
+  S-->>A: 정상 또는 패딩 오류
+  A->>A: 바이트 확정·이동
+  A->>S: 반복</div><p class="text-muted small">읽는 법: 물어보기→구분하기→확정하기의 루프입니다. 오류를 합치면 루프가 끊깁니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>오류 통합을 해놓고 로그에 상세를 남겨 우회되는 경우</li><li>타이밍 차이로 오라클이 부활하는 경우를 놓치는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="crypto-l06-01.html">← RSA 저지수 취약점</a><a class="btn btn-primary" href="crypto-l08-01.html">해시 크랙 실습 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

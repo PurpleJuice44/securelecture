@@ -16,9 +16,27 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>base64/hex/URL인코딩은 변환일 뿐</li><li>키는 없고 규칙만 있으면 누구나 복원</li><li>암호는 키 없이는 복원 불가</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>base64/hex/URL인코딩은 변환일 뿐</li><li>키는 없고 규칙만 있으면 누구나 복원</li><li>암호는 키 없이는 복원 불가</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">echo SGVsbG8= | base64 -d  → Hello</pre>
-<h4 class="mt-4">4. 실습</h4><p>base64 문자열 1개를 디코딩해본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>인코딩과 암호의 차이는?</li><li>base64가 보이는 곳 2가지는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 변환 vs 암호</h4><p>인코딩은 <strong>표현 바꾸기</strong>이고 암호는 <strong>키 없이는 못 읽게 하기</strong>입니다. base64는 규칙만 알면 누구나 되돌리지만, AES는 키 없이는 되돌릴 수 없습니다. CTF에서 base64가 보이면 디코딩부터 하는 이유가 여기 있습니다.</p><div class="mermaid">flowchart TD
+  X["수상한 문자열"] --> Q{"디코딩 되는가?"}
+  Q -->|base64·hex| D["인코딩 확정<br/>그냥 변환"]
+  Q -->|안 됨| E{"키·암호 흔적?"}
+  E -->|예| C["암호 분석으로<br/>다음 장들"]
+  E -->|아니오| H["해시 의심<br/>L4·L8로"]</div><p class="text-muted small">읽는 법: 디코딩부터 시도하고, 안 되면 암호·해시 가설로 넘어갑니다. 인코딩에 시간을 쓰지 않는 것이 핵심입니다.</p><h4 class="mt-4">2-3. 구분표</h4><table class="table table-sm table-bordered"><tr><th>구분</th><th>키</th><th>되돌리기</th><th>예시</th></tr><tr><td>인코딩</td><td>없음</td><td>누구나</td><td>base64·hex·URL</td></tr><tr><td>암호</td><td>있음</td><td>키 보유자만</td><td>AES·RSA</td></tr><tr><td>해시</td><td>없음(단방향)</td><td>원칙 불가</td><td>SHA256·bcrypt</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">echo SGVsbG8= | base64 -d  → Hello</pre><h4 class="mt-4">3-2. 심화 예제: 판별 루틴</h4><pre class="bg-light p-3 border rounded"># 1) base64 판별 (길이·문자집합·패딩)
+echo "SGVsbG8=" | base64 -d
+# 2) hex 판별
+echo "48656c6c6f" | xxd -r -p
+# 3) URL 인코딩 판별
+python3 -c "import urllib.parse; print(urllib.parse.unquote('Hello%20World'))"
+# 4) 여러 겹 인코딩 풀기 (최대 5회 반복)
+s="U0dWc2JHOGI="  # 예시
+for i in 1 2 3 4 5; do echo "$s"; s=$(echo "$s" | base64 -d 2>/dev/null) || break; done</pre><h4 class="mt-4">4. 실습</h4><ol><li>base64 문자열 1개를 디코딩해본다.</li><li>hex·URL 인코딩 샘플을 각각 판별·복원한다.</li><li>2중 인코딩된 문자열을 끝까지 푼다.</li><li>복원 불가 문자열 1개를 골라 암호·해시 가설을 적는다.</li><li>판별 순서도(위 그림)를 손으로 그려본다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>인코딩과 암호의 차이는?</li><li>base64가 보이는 곳 2가지는?</li><li>base64 패딩(<code>=</code>)의 역할은?</li><li>인코딩을 여러 겹 쓰는 이유는(CTF 관점)?</li><li>디코딩이 안 되면 다음 가설은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>인코딩은 키 없이 누구나 되돌리고, 암호는 키 없이는 못 읽게 한다.</li><li>JWT·이메일 첨부(MIME)·데이터 URL 등이다.</li><li>3바이트 경계를 맞추는 채움이다.</li><li>풀이자를 한 단계씩 풀게 하는 장애물이다.</li><li>암호문 또는 해시이다. 길이·문자집합으로 좁힌다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 판별 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant D as 디코더
+  A->>D: base64 시도
+  D-->>A: 성공 또는 실패
+  A->>D: hex·URL 시도
+  D-->>A: 성공 또는 암호 가설
+  A->>A: 다음 장으로 분기</div><p class="text-muted small">읽는 법: 30초 안에 판별하고 넘어갑니다. 인코딩에서 시간을 쓰면 뒤 문제 풀이 시간이 사라집니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>base64를 암호로 오해해 키 찾기에 매달리는 경우</li><li>개행을 포함한 채 디코딩해 실패하는 경우. <code>tr -d '\n'</code>로 정리한다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="crypto-l00-01.html">← 고전 암호</a><a class="btn btn-primary" href="crypto-l02-01.html">대칭키와 AES →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
