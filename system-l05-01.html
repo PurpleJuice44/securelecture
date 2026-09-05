@@ -16,9 +16,29 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>search → use → show options → set → run</li><li>허가된 실습 VM에서만 실행</li><li>검증 목적: 영향도 증명, 범위 준수</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>search → use → show options → set → run</li><li>허가된 실습 VM에서만 실행</li><li>검증 목적: 영향도 증명, 범위 준수</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">search vsftpd / use ... / show options (실습)</pre>
-<h4 class="mt-4">4. 실습</h4><p>옵션 설정 과정을 기록한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>모듈 3종(exploit/auxiliary/post)의 차이는?</li><li>실행 전 확인할 것은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 검증 조립 라인</h4><p>Metasploit은 <strong>찾기→고르기→맞추기→실행</strong>의 조립 라인입니다. search로 모듈을 찾고, use로 올리고, show options으로 빈칸을 확인하고, set으로 채운 뒤 run합니다. 목적은 파괴가 아니라 영향도 증명입니다.</p><div class="mermaid">flowchart TD
+  S["search<br/>모듈 검색"] --> U["use<br/>모듈 선택"]
+  U --> O["show options<br/>필수값 확인"]
+  O --> T["set RHOSTS 등<br/>범위 내 대상"]
+  T --> R["run·exploit<br/>검증 실행"]
+  R --> V["결과 기록<br/>영향도 증명"]</div><p class="text-muted small">읽는 법: 빈칸(show options)을 다 채우기 전에는 실행하지 않습니다. RHOSTS가 범위를 벗어나면 즉시 중단입니다.</p><h4 class="mt-4">2-3. 모듈 3종</h4><table class="table table-sm table-bordered"><tr><th>모듈</th><th>용도</th></tr><tr><td>exploit</td><td>취약점 실행·세션 획득</td></tr><tr><td>auxiliary</td><td>스캔·정보수집</td></tr><tr><td>post</td><td>점유 후 추가 작업</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">search vsftpd / use ... / show options (실습)</pre><h4 class="mt-4">3-2. 심화 예제: 검증 세션(실습 VM)</h4><pre class="bg-light p-3 border rounded">msfconsole -q
+# 1) 모듈 검색·선택 (실습 대상 버전용)
+search vsftpd
+use exploit/unix/ftp/vsftpd_234_backdoor
+# 2) 옵션 확인·설정 (RHOSTS는 실습망만!)
+show options
+set RHOSTS 실습호스트
+set RPORT 21
+# 3) 실행 전 범위 재확인 후 run
+# check → run → sessions -l
+# 4) 세션 정리: exit, 작업 로그 저장</pre><h4 class="mt-4">4. 실습</h4><ol><li>옵션 설정 과정을 기록한다.</li><li>실행 전 범위·대상·금지행위를 체크한다.</li><li>검증 결과를 캡처와 함께 기록한다.</li><li>세션 정리 절차를 따른다.</li><li>영향도를 한 줄로 요약한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>모듈 3종(exploit/auxiliary/post)의 차이는?</li><li>실행 전 확인할 것은?</li><li><code>show options</code>에서 봐야 할 것은?</li><li>검증 목적을 벗어난 사용이 문제인 이유는?</li><li>세션 정리까지 해야 하는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>실행·수집·점유 후 작업으로 단계가 다르다.</li><li>허가 범위·대상·금지행위이다.</li><li>필수값과 현재값, 특히 RHOSTS이다.</li><li>무단 접근·파괴로 법적 문제가 되기 때문이다.</li><li>좀비 세션이 남으면 오작동·추적 문제가 생기기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 검증 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 검증자
+  participant M as msfconsole
+  participant T as 실습 대상
+  A->>M: search·use·set
+  M->>T: 범위 내 검증 실행
+  T-->>M: 결과 반환
+  M-->>A: 영향도 기록</div><p class="text-muted small">읽는 법: 설정→실행→기록의 고리입니다. 기록 없는 실행은 없었던 일과 같습니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>RHOSTS를 범위 밖으로 넓히는 경우. 계약 위반이다.</li><li>옵션 미확인 실행으로 엉뚱한 대상을 건드리는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="system-l04-01.html">← 크론 권한상승 점검</a><a class="btn btn-primary" href="system-l06-01.html">Windows 권한상승 점검 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

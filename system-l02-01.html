@@ -16,9 +16,32 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>ss -tlnp로 리스닝 확인</li><li>ufw allow/deny/deny 규칙</li><li>불필요 서비스 비활성화</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>ss -tlnp로 리스닝 확인</li><li>ufw allow/deny/deny 규칙</li><li>불필요 서비스 비활성화</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">ufw allow 22/tcp / ufw enable  (실습 VM)</pre>
-<h4 class="mt-4">4. 실습</h4><p>SSH만 허용하는 규칙을 작성한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>리스닝 확인 명령은?</li><li>기본 정책 설정 순서는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 기본 거부·예외 허용</h4><p>방화벽의 정석은 <strong>전부 막고 필요한 것만 여는 것</strong>입니다. 리스닝 포트 목록을 뽑고, 쓰는 것만 허용한 뒤, 나머지는 거부합니다. 불필요 서비스는 끄는 것이 가장 확실한 차단입니다.</p><div class="mermaid">flowchart TD
+  L["ss -tlnp<br/>리스닝 목록"] --> J["필요 여부 판정"]
+  J --> U["불필요<br/>서비스 중지·제거"]
+  J --> N["필요<br/>방화벽 허용"]
+  N --> D["기본 거부<br/>deny incoming"]
+  D --> V["외부 스캔으로 검증"]</div><p class="text-muted small">읽는 법: 목록→판정→차단의 순서입니다. 허용 규칙보다 기본 거부 정책이 먼저입니다.</p><h4 class="mt-4">2-3. 점검표</h4><table class="table table-sm table-bordered"><tr><th>점검</th><th>명령</th><th>조치</th></tr><tr><td>리스닝 포트</td><td><code>ss -tlnp</code></td><td>불필요 종료</td></tr><tr><td>방화벽 상태</td><td><code>ufw status verbose</code></td><td>기본 거부+예외 허용</td></tr><tr><td>자동시작</td><td><code>systemctl list-unit-files</code></td><td>불필요 disable</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">ufw allow 22/tcp / ufw enable  (실습 VM)</pre><h4 class="mt-4">3-2. 심화 예제: SSH만 남기기(실습 VM)</h4><pre class="bg-light p-3 border rounded"># 1) 현재 리스닝과 방화벽 상태 기록
+ss -tlnp
+sudo ufw status verbose
+# 2) 기본 거부 후 SSH만 허용 (순서 엄수!)
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22/tcp
+sudo ufw enable
+# 3) 불필요 서비스 중지 (예시)
+sudo systemctl stop telnet.socket 2>/dev/null
+sudo systemctl disable telnet.socket 2>/dev/null
+# 4) 외부에서 포트 스캔으로 검증 (실습망)
+nmap -F 실습호스트</pre><h4 class="mt-4">4. 실습</h4><ol><li>SSH만 허용하는 규칙을 작성한다.</li><li>규칙 적용 전후의 리스닝 목록을 비교한다.</li><li>불필요 서비스 1개를 중지·비활성화한다.</li><li>외부 스캔으로 열린 포트를 검증한다.</li><li>되돌리기 절차(<code>ufw disable</code>·규칙 삭제)를 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>리스닝 확인 명령은?</li><li>기본 정책 설정 순서는?</li><li>허용 전 기본 거부를 먼저 하는 이유는?</li><li>서비스 중지와 방화벽 차단의 차이는?</li><li><code>ufw enable</code> 전 확인해야 할 것은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li><code>ss -tlnp</code>이다.</li><li>기본 거부→예외 허용→활성화 순서이다.</li><li>순서가 뒤바뀌면 자신을 차단해 접속이 끊기기 때문이다.</li><li>중지는 공격 표면 제거, 차단은 접근 차단이다. 둘 다 한다.</li><li>SSH 허용 규칙 존재 여부이다. 없으면 원격 접속이 끊긴다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 차단 순서</h4><div class="mermaid">sequenceDiagram
+  participant A as 관리자
+  participant F as 방화벽
+  participant N as 외부
+  A->>F: 기본 거부 설정
+  A->>F: SSH 허용 추가
+  A->>F: 활성화
+  N->>F: 포트 스캔
+  F-->>N: SSH만 응답</div><p class="text-muted small">읽는 법: 거부→허용→활성화→검증의 순서입니다. 활성화 전 SSH 규칙 확인이 생명줄입니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>원격에서 SSH 허용 없이 <code>ufw enable</code>해 접속이 끊기는 경우</li><li>방화벽만 믿고 서비스 자체를 끄지 않는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="system-l01-01.html">← 권한과 계정 관리</a><a class="btn btn-primary" href="system-l03-01.html">SUID 권한상승 점검 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

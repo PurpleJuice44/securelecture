@@ -10,6 +10,26 @@
 <main class="col-lg-9 col-md-8 p-4"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">목차</a></li>
 <li class="breadcrumb-item active">🖥️ 시스템</li></ol></nav>
 <h1>🖥️ 시스템</h1><p class="lead">서버를 지키는 힘. 리눅스·권한상승·하드닝.</p>
+<h3 class="mt-4">분야 아키텍처: 방어막 쌓기</h3><p>시스템 보안은 <strong>기초 체력→권한상승 이해→하드닝→실전 진단</strong>의 순서로 쌓입니다. 공격자가 오르는 사다리를 먼저 알아야 막을 곳이 보입니다.</p>
+<div class="mermaid">flowchart TD
+  L["리눅스 기초<br/>파일·프로세스·네트워크"] --> P["권한·계정<br/>소유권·SUID"]
+  P --> U["권한상승 경로<br/>SUID·크론·윈도우"]
+  U --> M["Metasploit<br/>검증 프레임워크"]
+  M --> H["하드닝<br/>불필요 제거·최소권한"]
+  H --> D["진단 실전<br/>체크리스트·프로젝트"]</div>
+<p class="text-muted small">읽는 법: 위에서 아래로가 학습 순서이자 방어 순서입니다. 권한상승 경로를 알아야 하드닝 포인트가 보입니다.</p>
+<h3 class="mt-4">학습 로드맵</h3><p>명령어부터 시작해 권한 체계를 익히고, 상승 경로와 도구를 거쳐 하드닝·진단으로 마무리합니다.</p>
+<div class="mermaid">flowchart LR
+  S0["L0 리눅스 기초"] --> S1["L1 권한·계정"]
+  S1 --> S2["L2 방화벽·서비스"]
+  S2 --> S3["L3 SUID 점검"]
+  S3 --> S4["L4 크론 상승"]
+  S4 --> S5["L5 Metasploit"]
+  S5 --> S6["L6 윈도우 상승"]
+  S6 --> S8["L8 서버 하드닝"]
+  S8 --> S9["L9 진단 실전"]
+  S9 --> S10["L10 시스템 프로젝트"]</div>
+<p class="text-muted small">읽는 법: 왼쪽부터 순서대로 학습하세요. L3·L4·L6은 권한상승 3종 세트로 묶어 이해하면 좋습니다.</p>
 <p><span class="badge text-bg-secondary">총 10장</span> <span class="badge text-bg-light text-dark border">Level = 막(難易度) · 장 = 기술</span></p>
 <h4 class="mt-4"><span class="badge text-bg-secondary">Level 0</span></h4><div class="row g-3"><div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
 <h6 class="card-title">리눅스 기초 명령</h6><p class="card-text small text-muted">파일·프로세스·네트워크 기본 명령을 쓸 수 있다.</p>

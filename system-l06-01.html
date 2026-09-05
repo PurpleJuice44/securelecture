@@ -16,9 +16,30 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>whoami /priv, systeminfo 패치 확인</li><li>AlwaysInstallElevated, 서비스 권한</li><li>자격증명 저장소·공유폴더 점검</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>whoami /priv, systeminfo 패치 확인</li><li>AlwaysInstallElevated, 서비스 권한</li><li>자격증명 저장소·공유폴더 점검</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">whoami /priv / systeminfo (실습 VM)</pre>
-<h4 class="mt-4">4. 실습</h4><p>점검 결과를 표로 정리한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>UAC의 역할은?</li><li>서비스 권한이 약하면 생기는 일은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 윈도우 점검 지도</h4><p>윈도우 권한상승 점검은 <strong>내 권한→패치 수준→설정 실수</strong> 순서로 봅니다. <code>whoami /priv</code>로 현재 권한을 확인하고, <code>systeminfo</code>로 미패치를 찾고, AlwaysInstallElevated·서비스 권한·자격증명 저장소를 차례로 점검합니다.</p><div class="mermaid">flowchart TD
+  W["whoami /priv<br/>현재 권한·그룹"] --> S["systeminfo<br/>미패치 커널"]
+  S --> A["AlwaysInstallElevated<br/>레지스트리 2곳"]
+  A --> V["서비스 권한<br/>쓰기 가능 경로?"]
+  V --> C["자격증명·공유<br/>저장된 PW"]
+  C --> R["보고·조치"]</div><p class="text-muted small">읽는 법: 위에서 아래로가 점검 순서입니다. 권한 확인 없이 패치부터 보면 맥락을 놓칩니다.</p><h4 class="mt-4">2-3. 점검표</h4><table class="table table-sm table-bordered"><tr><th>점검</th><th>명령·위치</th><th>위험 신호</th></tr><tr><td>권한</td><td><code>whoami /priv</code></td><td>SeImpersonate 등 고위험</td></tr><tr><td>패치</td><td><code>systeminfo</code></td><td>오래된 빌드·누락 KB</td></tr><tr><td>AIE</td><td>HKLM·HKCU Installer</td><td>둘 다 1이면 취약</td></tr><tr><td>서비스</td><td><code>sc qc 서비스명</code></td><td>쓰기 가능 바이너리 경로</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">whoami /priv / systeminfo (실습 VM)</pre><h4 class="mt-4">3-2. 심화 예제: 점검 루틴(실습 VM)</h4><pre class="bg-light p-3 border rounded">:: 1) 현재 권한과 그룹
+whoami /priv
+whoami /groups
+:: 2) 패치 수준 (빌드·핫픽스)
+systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
+wmic qfe get HotFixID | head
+:: 3) AlwaysInstallElevated 2곳 확인
+reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
+reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
+:: 4) 서비스 바이너리 권한 (예시)
+sc qc spooler
+icacls "C:\경로\service.exe"</pre><h4 class="mt-4">4. 실습</h4><ol><li>점검 결과를 표로 정리한다.</li><li>고위험 권한 2개를 골라 의미를 적는다.</li><li>AIE 2곳 값을 확인하고 판정한다.</li><li>서비스 경로 쓰기권한을 검사한다.</li><li>조치 우선순위를 매겨 보고한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>UAC의 역할은?</li><li>서비스 권한이 약하면 생기는 일은?</li><li>AIE가 둘 다 1이면 위험한 이유는?</li><li>패치 확인이 먼저인 이유는?</li><li>자격증명 저장소를 점검하는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>관리 작업 실행 시 동의를 구해 무단 상승을 막는 것이다.</li><li>서비스 바이너리 교체로 SYSTEM 권한을 탈취당한다.</li><li>일반 사용자가 MSI를 SYSTEM으로 설치할 수 있기 때문이다.</li><li>알려진 커널 익스플로잇이 통하면 나머지가 무의미하기 때문이다.</li><li>저장된 비밀번호가 평문에 준하게 복원되기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 점검 순서</h4><div class="mermaid">sequenceDiagram
+  participant A as 점검자
+  participant W as 윈도우 VM
+  A->>W: whoami·systeminfo
+  W-->>A: 권한·패치 현황
+  A->>W: AIE·서비스·자격증명
+  W-->>A: 취약 후보
+  A->>A: 조치·보고</div><p class="text-muted small">읽는 법: 권한→패치→설정의 순서입니다. 설정만 보고 권한을 놓치면 판정이 어긋납니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>HKLM만 보고 HKCU를 빼먹어 AIE를 오판하는 경우. 둘 다 1이어야 성립한다.</li><li>실습 범위를 벗어난 도메인·운영망 점검. 절대 금지이다.</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="system-l05-01.html">← Metasploit 기초</a><a class="btn btn-primary" href="system-l08-01.html">서버 하드닝 체크리스트 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

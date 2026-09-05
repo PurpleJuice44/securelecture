@@ -16,9 +16,25 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>SSH 키인증·root 차단</li><li>불필요 포트 차단, 자동업데이트</li><li>백업·로그 보관 정책</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>SSH 키인증·root 차단</li><li>불필요 포트 차단, 자동업데이트</li><li>백업·로그 보관 정책</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">체크리스트 10항목 표로 점검</pre>
-<h4 class="mt-4">4. 실습</h4><p>실습 VM에 5개 항목을 적용한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>하드닝이란?</li><li>SSH 강화 2가지는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 굳히기의 4기둥</h4><p>하드닝은 <strong>접근 통제·표면 축소·최신 유지·복구 준비</strong>의 4기둥입니다. SSH를 키인증으로 바꾸고, 포트·서비스를 줄이고, 자동업데이트를 켜고, 백업·로그를 남깁니다.</p><div class="mermaid">flowchart TD
+  A["SSH 강화<br/>키인증·root 차단"] --> P["포트·서비스 축소<br/>방화벽·disable"]
+  P --> U["자동업데이트<br/>무인 패치"]
+  U --> B["백업·로그<br/>복구·추적"]</div><p class="text-muted small">읽는 법: 위에서 아래로가 적용 순서입니다. 접근 통제부터 해야 나머지가 의미를 가집니다.</p><h4 class="mt-4">2-3. 체크리스트 10항목</h4><table class="table table-sm table-bordered"><tr><th>#</th><th>항목</th><th>확인</th></tr><tr><td>1</td><td>SSH 키인증</td><td>PasswordAuthentication no</td></tr><tr><td>2</td><td>root 직접 로그인 차단</td><td>PermitRootLogin no</td></tr><tr><td>3</td><td>방화벽 기본 거부</td><td>ufw default deny</td></tr><tr><td>4</td><td>불필요 서비스 중지</td><td>systemctl list</td></tr><tr><td>5</td><td>자동업데이트</td><td>unattended-upgrades</td></tr><tr><td>6</td><td>월드쓰기 제거</td><td>find -perm -o+w</td></tr><tr><td>7</td><td>SUID 정리</td><td>L3 연계</td></tr><tr><td>8</td><td>계정 정리</td><td>L1 연계</td></tr><tr><td>9</td><td>백업</td><td>복원 시험 포함</td></tr><tr><td>10</td><td>로그 보관</td><td>원격 전송</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">체크리스트 10항목 표로 점검</pre><h4 class="mt-4">3-2. 심화 예제: SSH 굳히기(실습 VM)</h4><pre class="bg-light p-3 border rounded"># 1) 키 생성·등록 (관리자 PC)
+ssh-keygen -t ed25519
+ssh-copy-id user@실습호스트
+# 2) 설정 변경 전 백업!
+sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+# 3) 강화 적용
+# PasswordAuthentication no
+# PermitRootLogin no
+sudo systemctl restart sshd
+# 4) 새 세션에서 키 로그인 확인 후 기존 세션 종료</pre><h4 class="mt-4">4. 실습</h4><ol><li>실습 VM에 5개 항목을 적용한다.</li><li>적용 전후를 체크리스트에 표시한다.</li><li>SSH 키 로그인을 검증한다.</li><li>백업 복원 시험을 1회 수행한다.</li><li>남은 5개 항목의 일정을 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>하드닝이란?</li><li>SSH 강화 2가지는?</li><li>설정 전 백업이 필요한 이유는?</li><li>자동업데이트의 위험과 이득은?</li><li>로그를 원격에 두는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>불필요를 제거해 공격 표면을 줄이는 것이다.</li><li>키인증과 root 직접 로그인 차단이다.</li><li>실수로 잠그면 복구가 불가하기 때문이다.</li><li>호환성 깨짐 위험 vs 패치 지연 위험이다. 스테이징으로 절충한다.</li><li>침해 시 로컬 로그가 지워져도 추적이 가능하기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 굳히기 순서</h4><div class="mermaid">sequenceDiagram
+  participant A as 관리자
+  participant S as 서버
+  A->>S: 백업 선행
+  A->>S: 접근 통제 적용
+  A->>S: 표면 축소
+  S-->>A: 검증·기록</div><p class="text-muted small">읽는 법: 백업이 0번입니다. 되돌릴 수 없으면 손댈 수 없습니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>SSH 설정 후 기존 세션을 끊고 검증하는 경우. 새 세션 확인이 먼저이다.</li><li>백업만 하고 복원 시험을 안 하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="system-l06-01.html">← Windows 권한상승 점검</a><a class="btn btn-primary" href="system-l09-01.html">시스템 진단 실전 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

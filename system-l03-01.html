@@ -16,9 +16,28 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>find / -perm -u=s 로 목록화</li><li>GTFO bins 개념(알려진 악용법)</li><li>소유자·필요성 검토 후 권한 제거</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>find / -perm -u=s 로 목록화</li><li>GTFO bins 개념(알려진 악용법)</li><li>소유자·필요성 검토 후 권한 제거</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">find / -perm -u=s -type f 2>/dev/null</pre>
-<h4 class="mt-4">4. 실습</h4><p>SUID 3개의 필요성을 평가한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>SUID란?</li><li>제거 판단 기준은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 남의 권한 빌려 쓰기</h4><p>SUID 비트가 붙은 파일은 <strong>실행한 사람이 아니라 파일 주인의 권한</strong>으로 동작합니다. 주인이 root인데 그 프로그램에 셸 탈출·파일 읽기 기능이 있으면, 일반 사용자가 root 권한을 빌려 쓰는 셈이 됩니다.</p><div class="mermaid">flowchart TD
+  F["SUID 파일 발견<br/>-rwsr-xr-x"] --> O{"주인이 root인가"}
+  O -->|아니오| L["낮은 위험<br/>기록만"]
+  O -->|예| G["GTFO bins 대조<br/>알려진 악용법"]
+  G --> N{"필요한가"}
+  N -->|예| K["유지·모니터링"]
+  N -->|아니오| R["SUID 제거<br/>chmod u-s"]</div><p class="text-muted small">읽는 법: 목록화→소유자 확인→악용법 대조→필요성 판정의 순서입니다. 모르면 지우는 것이 아니라 판단 근거를 남기고 지웁니다.</p><h4 class="mt-4">2-3. 점검표</h4><table class="table table-sm table-bordered"><tr><th>점검</th><th>명령</th><th>판단</th></tr><tr><td>SUID 목록</td><td><code>find / -perm -u=s</code></td><td>표준 외 낯선 파일 주목</td></tr><tr><td>소유자</td><td><code>ls -l</code></td><td>root 소유가 고위험</td></tr><tr><td>악용법</td><td>GTFOBins 대조</td><td>셸 탈출 가능 여부</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">find / -perm -u=s -type f 2>/dev/null</pre><h4 class="mt-4">3-2. 심화 예제: 점검 루틴</h4><pre class="bg-light p-3 border rounded"># 1) SUID 전체 목록 (에러 숨김)
+find / -xdev -type f -perm -u=s 2>/dev/null | sort > suid.txt
+wc -l suid.txt
+# 2) 낯선 파일 골라내기 (표준: su·sudo·passwd·mount 등)
+cat suid.txt
+# 3) 의심 파일의 기능 확인 (도움말·문자열)
+strings /의심경로 | grep -i -E "sh|system|exec" | head
+# 4) 불필요 확정 시 권한 제거 (실습 VM, 근거 기록 후)
+# chmod u-s /의심경로</pre><h4 class="mt-4">4. 실습</h4><ol><li>SUID 3개의 필요성을 평가한다.</li><li>표준 SUID와 낯선 SUID를 구분해 표로 만든다.</li><li>의심 파일의 문자열에서 위험 기능을 찾는다.</li><li>제거·유지 판정과 근거를 각각 한 줄로 적는다.</li><li>GTFOBins에서 해당 바이너리 항목을 읽는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>SUID란?</li><li>제거 판단 기준은?</li><li>root 소유 SUID가 위험한 이유는?</li><li>무작정 지우면 안 되는 이유는?</li><li>GTFOBins의 용도는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>실행 시 파일 주인 권한으로 동작하는 특수 비트이다.</li><li>필요성·대체수단·악용 가능성이다.</li><li>악용 시 root 권한을 그대로 빌려 쓰기 때문이다.</li><li>시스템 필수 기능(su·sudo 등)이 멈추기 때문이다.</li><li>바이너리별 알려진 악용법을 정리한 참고 자료이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 점검 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 점검자
+  participant S as 시스템
+  A->>S: SUID 목록 수집
+  S-->>A: 전체 목록
+  A->>A: 소유자·필요성 판정
+  A->>S: 불필요 비트 제거
+  S-->>A: 재점검·기록</div><p class="text-muted small">읽는 법: 수집→판정→조치→기록의 고리입니다. 정기 점검으로 새로 생긴 SUID를 잡습니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>표준 SUID까지 지워 로그인이 안 되는 경우</li><li>제거 근거를 남기지 않아 다음 점검 때 같은 논쟁을 반복하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="system-l02-01.html">← 방화벽과 서비스 관리</a><a class="btn btn-primary" href="system-l04-01.html">크론 권한상승 점검 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

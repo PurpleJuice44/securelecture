@@ -16,10 +16,26 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>ls/cd/cp/mv/rm, chmod/chown</li><li>ps/top, systemctl</li><li>ip/ss/ping, man 활용</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>ls/cd/cp/mv/rm, chmod/chown</li><li>ps/top, systemctl</li><li>ip/ss/ping, man 활용</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">ls -l / man ls / ss -tlnp</pre>
-<h4 class="mt-4">4. 실습</h4><p>명령 5개를 직접 실행하고 결과를 기록한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>man의 용도는?</li><li>ss로 보는 정보는?</li></ol>
-<div class="d-flex justify-content-between mt-5"><a class="btn btn-primary" href="system-l01-01.html">권한과 계정 관리 →</a></div></main>
+<h4 class="mt-4">2-2. 동작 원리 심화: 셸과 커널 사이</h4><p>명령어를 치면 <strong>셸이 해석→커널이 실행→결과 반환</strong>의 고리가 돕니다. 파일·프로세스·네트워크 명령은 각각 다른 커널 자원을 두드리므로, 출력 읽는 법부터 익히면 진단의 절반은 끝납니다.</p><div class="mermaid">flowchart TD
+  U["사용자 입력<br/>ls -l /"] --> S["셸 해석<br/>인자·경로展开"]
+  S --> K["시스템콜<br/>open·getdents"]
+  K --> F["파일시스템 조회"]
+  F --> R["결과 반환<br/>권한·크기·시각"]
+  P["ps·ss"] --> K2["프로세스·소켓 조회"]</div><p class="text-muted small">읽는 법: 모든 명령은 커널 조회의 포장지입니다. 출력의 각 열이 무엇을 뜻하는지 아는 것이 실력입니다.</p><h4 class="mt-4">2-3. 명령 3종 세트</h4><table class="table table-sm table-bordered"><tr><th>영역</th><th>명령</th><th>볼 것</th></tr><tr><td>파일</td><td><code>ls -l</code></td><td>권한·소유자·크기·시각</td></tr><tr><td>프로세스</td><td><code>ps aux</code></td><td>소유자·CPU·명령</td></tr><tr><td>네트워크</td><td><code>ss -tlnp</code></td><td>대기 포트·프로세스</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">ls -l / man ls / ss -tlnp</pre><h4 class="mt-4">3-2. 심화 예제: 읽기 루틴</h4><pre class="bg-light p-3 border rounded"># 1) 권한 읽기 (d rwx r-x r-x 해석)
+ls -l /etc/passwd /etc/shadow
+# 2) 수상 프로세스 찾기 (소유자·CPU·낯선 경로)
+ps aux --sort=-%cpu | head
+# 3) 열린 포트와 주인 확인
+ss -tlnp
+# 4) 모르면 그 자리에서 (man·--help)
+man ls | head -20; ss --help | head -10</pre><h4 class="mt-4">4. 실습</h4><ol><li>명령 5개를 직접 실행하고 결과를 기록한다.</li><li><code>ls -l</code> 출력 1줄을 7칸으로 나눠 해석한다.</li><li>CPU 상위 프로세스 3개를 적고 정상 여부를 판단한다.</li><li>대기 포트 목록을 뽑아 불필요 서비스를 표시한다.</li><li>모르는 옵션 1개를 man으로 찾아 정리한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>man의 용도는?</li><li>ss로 보는 정보는?</li><li><code>ls -l</code> 첫 칸 <code>drwxr-xr-x</code>의 의미는?</li><li><code>ps aux</code>에서 수상 기준 2가지는?</li><li>포트와 프로세스를 함께 봐야 하는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>명령어 매뉴얼을 보는 것이다.</li><li>소켓 상태·포트·연결 프로세스이다.</li><li>디렉토리이며 소유자는 전부, 그룹·others는 읽기·실행만이다.</li><li>낯선 소유자·경로와 비정상 CPU 점유이다.</li><li>열린 포트가 어떤 프로그램 것인지 알아야 조치할 수 있기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 조회 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 관리자
+  participant S as 셸
+  participant K as 커널
+  A->>S: 명령 입력
+  S->>K: 시스템콜
+  K-->>S: 자원 상태
+  S-->>A: 표 출력</div><p class="text-muted small">읽는 법: 출력은 커널 상태의 스냅샷입니다. 주기적으로 찍어두면 변화 탐지의 기준선이 됩니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>root로 습관적 작업하는 경우. 최소권한·sudo 원칙을 지킨다.</li><li>출력을 읽지 않고 명령만 외우는 경우</li></ul><div class="d-flex justify-content-between mt-5"><a class="btn btn-outline-secondary" href="field-system.html">← 분야 목차</a><a class="btn btn-primary" href="system-l01-01.html">권한과 계정 관리 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><button id="toTop" class="btn btn-dark rounded-circle" title="맨 위로">↑</button><script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:"base",securityLevel:"loose"});var t=document.getElementById("toTop");window.addEventListener("scroll",function(){t.style.display=window.scrollY>400?"block":"none"});t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});</script></body></html>
