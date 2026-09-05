@@ -16,9 +16,22 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>process/remote 연결</li><li>p64/p32 패킹, sendlineafter</li><li>템플릿으로 풀이 속도 향상</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>process/remote 연결</li><li>p64/p32 패킹, sendlineafter</li><li>템플릿으로 풀이 속도 향상</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">r = process('./vuln'); r.sendline(b'A'*72) (개념)</pre>
-<h4 class="mt-4">4. 실습</h4><p>연결→전송→수신 스크립트를 작성한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>p64의 용도는?</li><li>로컬/원격 전환 방법은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 연결·포장·동기화</h4><p>pwntools는 <strong>연결하고→주소를 포장하고→때를 맞춰 보내는</strong> 3박자입니다. process·remote로 붙고, p64로 주소를 싸고, sendlineafter로 프롬프트를 기다렸다 보냅니다.</p><div class="mermaid">flowchart TD
+  C["연결<br/>process·remote"] --> P["포장<br/>p64·p32"]
+  P --> S["동기화<br/>sendlineafter"]
+  S --> R["수신·판정<br/>recvuntil"]</div><p class="text-muted small">읽는 법: 붙이기→싸기→맞추기의 순서입니다. 동기화를 빼먹으면 타이밍이 어긋나 실패합니다.</p><h4 class="mt-4">2-3. 함수표</h4><table class="table table-sm table-bordered"><tr><th>함수</th><th>용도</th></tr><tr><td><code>process·remote</code></td><td>로컬·원격 연결</td></tr><tr><td><code>p64·u64</code></td><td>주소 포장·해제</td></tr><tr><td><code>sendlineafter</code></td><td>문구 대기 후 전송</td></tr><tr><td><code>recvuntil</code></td><td>구분자까지 수신</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">r = process('./vuln'); r.sendline(b'A'*72) (개념)</pre><h4 class="mt-4">3-2. 심화 예제: 템플릿(실습 대상만)</h4><pre class="bg-light p-3 border rounded">from pwn import *
+# 로컬↔원격 한 줄 전환
+# r = process("./vuln")
+r = remote("실습호스트", 9000)  # 허가된 실습 대상만!
+r.sendlineafter(b"입력:", b"A"*72)
+print(r.recvuntil(b"결과").decode(errors="ignore"))
+# 포인트: sendlineafter의 대기 문구는 실제 출력과 정확히 일치시킬 것</pre><h4 class="mt-4">4. 실습</h4><ol><li>연결→전송→수신 스크립트를 작성한다.</li><li>p64·u64 왕복 변환을 확인한다.</li><li>sendline과 sendlineafter 차이를 실험한다.</li><li>로컬·원격 전환을 연습한다(실습 대상).</li><li>템플릿 파일 1개를 저장한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>p64의 용도는?</li><li>로컬/원격 전환 방법은?</li><li>sendlineafter가 필요한 이유는?</li><li>u64 사용 전 필요한 처리는?</li><li>연결 종료를 명시해야 하는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>주소를 8바이트 리틀엔디언으로 포장하는 것이다.</li><li>process와 remote 한 줄을 교체하는 것이다.</li><li>상대 출력을 기다렸다 보내 타이밍을 맞추기 위해서이다.</li><li>8바이트 패딩(ljust)이다.</li><li>좀비 연결·포트 고갈을 막기 위해서이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 입출력 동기화</h4><div class="mermaid">sequenceDiagram
+  participant S as 스크립트
+  participant T as 대상
+  S->>T: 연결
+  T-->>S: 프롬프트 출력
+  S->>T: sendlineafter 전송
+  T-->>S: 결과 반환</div><p class="text-muted small">읽는 법: 기다렸다 보내는 것이 핵심입니다. sleep 대신 출력 문구 대기를 씁니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>대기 문구 오타로 영원히 기다리는 경우</li><li>인코딩을 안 맞춰 바이트·문자열이 섞이는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="misc-l05-01.html">← 정규식 기초</a><a class="btn btn-primary" href="misc-l08-01.html">Write-up 작성법 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

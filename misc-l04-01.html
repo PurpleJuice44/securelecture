@@ -16,9 +16,25 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>캡처 → 필터(http/dns/tcp.port)</li><li>Follow TCP Stream</li><li>IO 그래프로 이상 탐지</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>캡처 → 필터(http/dns/tcp.port)</li><li>Follow TCP Stream</li><li>IO 그래프로 이상 탐지</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">http / dns / ip.addr==x 필터 실습</pre>
-<h4 class="mt-4">4. 실습</h4><p>DNS 질의 Top 5를 뽑아본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>디스플레이 필터란?</li><li>Follow Stream의 용도는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 캡처→필터→재조립</h4><p>Wireshark 분석은 <strong>전체를 잡고 필요한 것만 보고 대화로 복원</strong>합니다. 디스플레이 필터로 좁히고, Follow Stream으로 이어 붙이고, IO 그래프로 이상을 찾습니다.</p><div class="mermaid">flowchart TD
+  C["캡처<br/>인터페이스 선택"] --> F["필터<br/>http·dns·ip.addr"]
+  F --> S["Follow Stream<br/>대화 복원"]
+  S --> G["IO 그래프<br/>급증 지점"]
+  G --> E["파일 추출<br/>Export Objects"]</div><p class="text-muted small">읽는 법: 좁히기→잇기→훑기의 순서입니다. 처음부터 패킷을 하나씩 읽지 않습니다.</p><h4 class="mt-4">2-3. 필터표</h4><table class="table table-sm table-bordered"><tr><th>목적</th><th>필터</th></tr><tr><td>웹만</td><td><code>http</code></td></tr><tr><td>도메인 조회</td><td><code>dns</code></td></tr><tr><td>특정 호스트</td><td><code>ip.addr==192.0.2.10</code></td></tr><tr><td>특정 포트</td><td><code>tcp.port==80</code></td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">http / dns / ip.addr==x 필터 실습</pre><h4 class="mt-4">3-2. 심화 예제: tshark 루틴</h4><pre class="bg-light p-3 border rounded"># 1) 대화 통계
+tshark -r cap.pcap -q -z conv,ip | head -20
+# 2) DNS Top 5
+tshark -r cap.pcap -Y dns -T fields -e dns.qry.name | sort | uniq -c | sort -nr | head -5
+# 3) HTTP 호스트 Top
+tshark -r cap.pcap -Y http -T fields -e http.host | sort | uniq -c | sort -nr | head
+# 4) 특정 스트림 저장 후 Wireshark로 열기
+tshark -r cap.pcap -Y "tcp.stream==0" -w s0.pcap</pre><h4 class="mt-4">4. 실습</h4><ol><li>DNS 질의 Top 5를 뽑아본다.</li><li>HTTP 호스트 Top을 뽑는다.</li><li>Follow Stream으로 대화 1개를 복원한다.</li><li>IO 그래프에서 급증 구간을 찾는다.</li><li>추출 파일의 해시를 구한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>디스플레이 필터란?</li><li>Follow Stream의 용도는?</li><li>캡처 필터와 디스플레이 필터의 차이는?</li><li>IO 그래프가 보여주는 것은?</li><li>스트림 번호의 용도는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>잡힌 패킷 중 보여줄 것만 고르는 것이다.</li><li>흩어진 패킷을 대화로 이어 붙이는 것이다.</li><li>캡처 필터는 저장 대상을, 디스플레이는 표시 대상을 정한다.</li><li>시간대별 트래픽 양 변화이다.</li><li>대화를 구분하는 번호이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 분석 순서</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant T as tshark
+  participant W as Wireshark
+  A->>T: 통계·Top 추출
+  T-->>A: 의심 대화 특정
+  A->>W: 스트림 재조립
+  W-->>A: 파일·대화 복원</div><p class="text-muted small">읽는 법: 명령행으로 좁히고 GUI로 확인합니다. L6 포렌식 pcap 장과 이어집니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>필터 문법 오류로 빈 화면을 보고 데이터가 없는 줄 아는 경우</li><li>암호화 구간을 평문처럼 해석하려 드는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="misc-l03-01.html">← OSINT 기초</a><a class="btn btn-primary" href="misc-l05-01.html">정규식 기초 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

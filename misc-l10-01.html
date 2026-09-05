@@ -16,10 +16,23 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>주제 1개 + 분야 2개 이상 연결</li><li>GitHub 정리(목차·코드·보고서)</li><li>발표 5분 구성</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>주제 1개 + 분야 2개 이상 연결</li><li>GitHub 정리(목차·코드·보고서)</li><li>발표 5분 구성</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">예: 로그분석+정규식+보고서 패키지</pre>
-<h4 class="mt-4">4. 실습</h4><p>프로젝트 1건을 완성한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>좋은 포트폴리오의 조건은?</li><li>발표 구성 3단계는?</li></ol>
-<div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="misc-l09-01.html">← 팀 CTF 전략</a></div></main>
+<h4 class="mt-4">2-2. 동작 원리 심화: 연결이 실력이다</h4><p>종합 프로젝트는 <strong>분야 2개 이상을 엮은 하나의 이야기</strong>입니다. 예: 로그 수집(시스템)→정규식 추출(Misc)→타임라인 보고(포렌식). 단일 기술 나열이 아니라 연결이 평가받습니다.</p><div class="mermaid">flowchart TD
+  T["주제 선정<br/>작고 구체적으로"] --> F["분야 2개 연결<br/>예: 로그+정규식"]
+  F --> I["구현·수집"]
+  I --> R["보고서·코드 정리"]
+  R --> P["GitHub 공개"]
+  P --> V["5분 발표"]</div><p class="text-muted small">읽는 법: 주제→연결→구현→공개→발표의 순서입니다. 연결 지점이 프로젝트의 개성입니다.</p><h4 class="mt-4">2-3. 평가표</h4><table class="table table-sm table-bordered"><tr><th>관점</th><th>좋음</th><th>나쁨</th></tr><tr><td>연결</td><td>분야가 이야기를 이룸</td><td>기술 나열</td></tr><tr><td>재현</td><td>코드·데이터 포함</td><td>결과만 있음</td></tr><tr><td>발표</td><td>문제→해결 5분</td><td>시간 초과·두서없음</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">예: 로그분석+정규식+보고서 패키지</pre><h4 class="mt-4">3-2. 심화 예제: 저장소 구조</h4><pre class="bg-light p-3 border rounded">my-project/
+  README.md        # 문제→해결 10줄 + 실행법
+  src/             # 스크립트 (요구사항·버전 명시)
+  data-sample/     # 재현용 샘플 (민감정보 제외)
+  docs/            # 보고서·발표자료
+  # 포인트: 클론 후 5분 안에 데모가 돌아가야 한다</pre><h4 class="mt-4">4. 실습</h4><ol><li>프로젝트 1건을 완성한다.</li><li>주제를 한 문장으로 적는다.</li><li>분야 연결점을 그림으로 그린다.</li><li>저장소를 위 구조로 정리한다.</li><li>5분 발표를 리허설한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>좋은 포트폴리오의 조건은?</li><li>발표 구성 3단계는?</li><li>분야 연결이 중요한 이유는?</li><li>샘플 데이터가 필요한 이유는?</li><li>5분 제한의 의도는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>재현 가능하고 연결이 있는 것이다.</li><li>문제→해결→교훈이다.</li><li>실전 문제는 분야를 넘나들기 때문이다.</li><li>남이 돌려봐야 신뢰되기 때문이다.</li><li>핵심만 말하는 훈련이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 마무리</h4><div class="mermaid">sequenceDiagram
+  participant A as 작성자
+  participant R as 검토자
+  A->>R: 저장소 공개
+  R-->>A: 재현·이해 피드백
+  A->>R: 발표 리허설
+  R-->>A: 시간·구성 승인</div><p class="text-muted small">읽는 법: 공개→피드백→발표의 순서입니다. 남의 눈을 거치지 않은 포트폴리오는 미완성입니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>거창한 주제로 시작해 완성을 못하는 경우. 작게 잡고 끝낸다.</li><li>민감정보를 샘플에 섞는 경우</li></ul><div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="misc-l09-01.html">← 팀 CTF 전략</a><a class="btn btn-outline-secondary" href="field-misc.html">분야 목차 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><button id="toTop" class="btn btn-dark rounded-circle" title="맨 위로">↑</button><script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:"base",securityLevel:"loose"});var t=document.getElementById("toTop");window.addEventListener("scroll",function(){t.style.display=window.scrollY>400?"block":"none"});t.addEventListener("click",function(){window.scrollTo({top:0,behavior:"smooth"})});</script></body></html>

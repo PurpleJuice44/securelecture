@@ -16,9 +16,29 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>입출력·반복문·함수</li><li>문자열/바이트 다루기</li><li>requests로 HTTP 요청</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>입출력·반복문·함수</li><li>문자열/바이트 다루기</li><li>requests로 HTTP 요청</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">requests.get(url).text (개념)</pre>
-<h4 class="mt-4">4. 실습</h4><p>base64 디코딩 스크립트를 작성한다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>바이트와 문자열 차이는?</li><li>requests의 용도는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: CTF 파이썬 3종 세트</h4><p>CTF 파이썬은 <strong>문자열·바이트·요청</strong>이면 절반이 끝납니다. 인코딩을 풀고, 바이트를 자르고 붙이고, HTTP로 보내고 받는 흐름이 모든 풀이 스크립트의 뼈대입니다.</p><div class="mermaid">flowchart TD
+  S["문자열 처리<br/>슬라이싱·정규식"] --> B["바이트 변환<br/>encode·decode·hex"]
+  B --> R["requests 요청<br/>GET·POST"]
+  R --> P["응답 파싱<br/>플래그 추출"]</div><p class="text-muted small">읽는 법: 문자열→바이트→요청→파싱의 순서입니다. 막히면 앞 단계의 타입(str·bytes)부터 의심합니다.</p><h4 class="mt-4">2-3. 필수 스니펫표</h4><table class="table table-sm table-bordered"><tr><th>용도</th><th>코드</th></tr><tr><td>base64 디코딩</td><td><code>base64.b64decode(s)</code></td></tr><tr><td>hex 변환</td><td><code>bytes.fromhex(h)</code></td></tr><tr><td>HTTP GET</td><td><code>requests.get(url).text</code></td></tr><tr><td>반복 대입</td><td><code>for c in string.printable</code></td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">requests.get(url).text (개념)</pre><h4 class="mt-4">3-2. 심화 예제: 풀이 상자 3종</h4><pre class="bg-light p-3 border rounded"># 1) base64 다중 디코딩
+import base64
+def autodecode(s, n=5):
+    for _ in range(n):
+        try: s = base64.b64decode(s).decode()
+        except Exception: break
+    return s
+# 2) HTTP 요청·파싱
+import requests, re
+r = requests.get(url, timeout=10)
+print(re.findall(r"flag\{[^}]+\}", r.text))
+# 3) 문자-바이트 왕복
+b = "ABC".encode()        # b'ABC'
+print(b.hex(), b[0])      # 414243 65</pre><h4 class="mt-4">4. 실습</h4><ol><li>base64 디코딩 스크립트를 작성한다.</li><li>위 3종 스니펫을 손으로 쳐본다.</li><li>str·bytes 타입 에러를 일부러 내보고 고친다.</li><li>실습 URL에서 플래그 패턴을 추출한다.</li><li>자주 쓰는 코드를 함수 파일로 모은다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>바이트와 문자열 차이는?</li><li>requests의 용도는?</li><li><code>.encode()</code>와 <code>.decode()</code>의 방향은?</li><li>타임아웃을 거는 이유는?</li><li>스크립트를 함수화하는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>바이트는 날것(0~255), 문자열은 해석된 문자이다.</li><li>HTTP 요청·응답을 다루는 것이다.</li><li>encode는 문자열→바이트, decode는 바이트→문자열이다.</li><li>멈춘 요청에 풀이가 묶이지 않게 하기 위해서이다.</li><li>다음 문제에 그대로 재사용하기 위해서이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 풀이 스크립트 흐름</h4><div class="mermaid">sequenceDiagram
+  participant S as 스크립트
+  participant W as 문제 서버
+  S->>S: 입력 가공 (디코딩)
+  S->>W: 요청 전송
+  W-->>S: 응답 수신
+  S->>S: 정규식 추출</div><p class="text-muted small">읽는 법: 가공→요청→추출의 고리입니다. 이 고리가 L2 자동화의 재료가 됩니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>개행·공백을 안 떼고 디코딩해 실패하는 경우. <code>strip()</code>이 먼저이다.</li><li>예외 처리 없이 돌려 중간에 멈추는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="misc-l00-01.html">← CTF 입문과 환경구축</a><a class="btn btn-primary" href="misc-l02-01.html">자동화 스크립팅 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

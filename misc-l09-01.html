@@ -16,9 +16,24 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>분야별 담당 + 공유 채널</li><li>쉬운 문제부터 스윕</li><li>막히면 30분 룰(전환/공유)</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>분야별 담당 + 공유 채널</li><li>쉬운 문제부터 스윕</li><li>막히면 30분 룰(전환/공유)</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">스코어보드 주시 + 우선순위 표</pre>
-<h4 class="mt-4">4. 실습</h4><p>모의 CTF 계획을 세워본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>30분 룰이란?</li><li>공유가 중요한 이유는?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 점수 기대값 게임</h4><p>팀전은 <strong>쉬운 문제 싹쓸이→분야 분담→막히면 공유</strong>의 게임입니다. 어려운 1개에 매달리느라 쉬운 5개를 놓치면 집니다. 30분 룰(막히면 전환·공유)이 핵심 규율입니다.</p><div class="mermaid">flowchart TD
+  S["시작<br/>쉬운 문제 스윕"] --> A["분야 분담<br/>각자 전문"]
+  A --> P["풀이·공유 채널"]
+  P --> B{"30분 경과?"}
+  B -->|미해결| T["전환·공유<br/>다른 문제로"]
+  B -->|해결| N["다음 문제"]
+  T --> A</div><p class="text-muted small">읽는 법: 스윕→분담→공유의 순서입니다. 30분 룰이 팀 전체의 시간을 지킵니다.</p><h4 class="mt-4">2-3. 역할표</h4><table class="table table-sm table-bordered"><tr><th>역할</th><th>임무</th></tr><tr><td>스위퍼</td><td>쉬운 문제 전량 수거</td></tr><tr><td>분야 담당</td><td>웹·리버싱 등 전문 풀이</td></tr><tr><td>서포터</td><td>환경·도구·Write-up 지원</td></tr><tr><td>캡틴</td><td>우선순위·전환 판단</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">스코어보드 주시 + 우선순위 표</pre><h4 class="mt-4">3-2. 심화 예제: 운영 보드 양식</h4><pre class="bg-light p-3 border rounded"># 공유 채널 고정 양식
+# [도전중] 웹-L5 XSS / 담당: A / 경과: 15분
+# [막힘] 리버싱-L4 / 시도: strings·Ghidra / 다음: gdb 전환 예정
+# [해결] 포렌식-L1 / 풀이자: B / Write-up 링크
+# 스코어보드 체크 주기: 30분 (푼 팀 많은 문제 = 쉬움)</pre><h4 class="mt-4">4. 실습</h4><ol><li>모의 CTF 계획을 세워본다.</li><li>역할을 나누고 담당 분야를 정한다.</li><li>30분 룰을 문서화한다.</li><li>공유 양식으로 모의 보고를 해본다.</li><li>종료 후 회고(잘한 점·막힌 점)를 적는다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>30분 룰이란?</li><li>공유가 중요한 이유는?</li><li>쉬운 문제부터 푸는 이유는?</li><li>스코어보드를 보는 이유는?</li><li>캡틴의 역할은?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>30분 막히면 전환·공유하는 규율이다.</li><li>중복 삽질을 막고 풀이 속도를 올리기 위해서이다.</li><li>확실한 점수를 먼저 모아 심리적·점수적 여유를 만들기 위해서이다.</li><li>많이 푼 문제=쉬운 문제라는 힌트를 얻기 위해서이다.</li><li>우선순위와 전환을 판단하는 것이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 팀 운영</h4><div class="mermaid">sequenceDiagram
+  participant T as 팀원
+  participant C as 공유 채널
+  participant K as 캡틴
+  T->>C: 상태 보고 (도전·막힘·해결)
+  C-->>K: 전체 현황
+  K->>T: 전환·지원 지시
+  T->>C: 결과 공유</div><p class="text-muted small">읽는 법: 보고→판단→지시의 고리입니다. 조용한 팀원이 있으면 캡틴이 먼저 말을 겁니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>어려운 문제에 전원 매달려 쉬운 점을 흘리는 경우</li><li>막힌 걸 숨겨 30분 룰이 무너지는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="misc-l08-01.html">← Write-up 작성법</a><a class="btn btn-primary" href="misc-l10-01.html">종합 프로젝트 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

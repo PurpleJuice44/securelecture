@@ -16,9 +16,25 @@
 <div class="alert alert-danger py-2"><small>⚠️ 실습은 본인 소유 VM·실습용 사이트(허가된 환경)에서만 수행하세요.</small></div>
 <h4 class="mt-4">1. 학습 목표</h4><ul><li>\d, \w, ., *, +, ^$</li><li>grep -E, python re</li><li>IP·이메일 패턴 작성</li></ul>
 <h4 class="mt-4">2. 핵심 개념</h4><ul><li>\d, \w, ., *, +, ^$</li><li>grep -E, python re</li><li>IP·이메일 패턴 작성</li></ul>
-<h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' log</pre>
-<h4 class="mt-4">4. 실습</h4><p>로그에서 IP를 추출해본다.</p>
-<h4 class="mt-4">5. 퀴즈</h4><ol><li>\d+의 의미는?</li><li>^와 $의 역할은?</li></ol>
+<h4 class="mt-4">2-2. 동작 원리 심화: 패턴의 문법</h4><p>정규식은 <strong>문자 지정·반복·위치</strong> 3요소로 이루어집니다. <code>\d</code>는 숫자, <code>+</code>는 1개 이상 반복, <code>^$</code>는 줄의 시작·끝입니다. 로그에서 IP·이메일을 뽑는 것이 대표 용도입니다.</p><div class="mermaid">flowchart TD
+  T["텍스트"] --> P["패턴 작성<br/>문자+반복+위치"]
+  P --> G["grep·re 실행"]
+  G --> M{"매칭?"}
+  M -->|예| E["추출·집계"]
+  M -->|아니오| R["패턴 수정"]</div><p class="text-muted small">읽는 법: 작게 시작해 넓혀갑니다. 탐욕 매칭(<code>.*</code>)이 길게 먹는 것이 대표 함정입니다.</p><h4 class="mt-4">2-3. 문법표</h4><table class="table table-sm table-bordered"><tr><th>문법</th><th>의미</th><th>예시</th></tr><tr><td><code>\d</code></td><td>숫자</td><td>전화·IP 조각</td></tr><tr><td><code>\w</code></td><td>영숫자·_</td><td>ID·도메인</td></tr><tr><td><code>+·*</code></td><td>1개 이상·0개 이상</td><td>반복 구간</td></tr><tr><td><code>^·$</code></td><td>시작·끝</td><td>줄 전체 매칭</td></tr><tr><td><code>[ ]·( )</code></td><td>집합·그룹</td><td>추출 단위</td></tr></table><h4 class="mt-4">3. 예제</h4><pre class="bg-light p-3 border rounded">grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' log</pre><h4 class="mt-4">3-2. 심화 예제: 로그 채굴 루틴</h4><pre class="bg-light p-3 border rounded"># 1) IP 추출·집계
+grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' access.log | sort | uniq -c | sort -nr | head
+# 2) 이메일 추출
+grep -Eo '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' dump.txt | sort -u
+# 3) 파이썬 추출 (그룹 활용)
+import re
+ips = re.findall(r"\d+\.\d+\.\d+\.\d+", open("access.log").read())
+# 4) 탐욕 함정 확인: .* vs .*? 차이 비교</pre><h4 class="mt-4">4. 실습</h4><ol><li>로그에서 IP를 추출해본다.</li><li>이메일 패턴을 작성·검증한다.</li><li>탐욕·게으른 매칭 차이를 실험한다.</li><li>추출 결과를 집계표로 만든다.</li><li>패턴 1개를 함수화해 재사용한다.</li></ol><h4 class="mt-4">5. 퀴즈</h4><ol><li>\d+의 의미는?</li><li>^와 $의 역할은?</li><li><code>.*</code>가 위험한 이유는?</li><li><code>-o</code> 옵션의 역할은?</li><li>정규식으로 HTML을 파싱하면 안 되는 이유는?</li></ol><details class="mb-2"><summary>정답 보기</summary><ol><li>숫자 1개 이상이다.</li><li>문자열의 시작·끝 고정이다.</li><li>탐욕적으로 최대로 먹어 의도와 다르게 매칭되기 때문이다.</li><li>매칭된 부분만 출력하는 것이다.</li><li>중첩 구조를 정규식으로 온전히 다룰 수 없어 깨지기 때문이다.</li></ol></details><h4 class="mt-4">5-2. 한눈에 보는 추출 흐름</h4><div class="mermaid">sequenceDiagram
+  participant A as 분석가
+  participant R as 정규식 엔진
+  A->>R: 작은 패턴 투입
+  R-->>A: 매칭 샘플
+  A->>R: 패턴 정교화
+  R-->>A: 추출·집계</div><p class="text-muted small">읽는 법: 한 번에 완성하지 않고 샘플을 보며 조입니다. 테스트용 문자열 모음이 필수입니다.</p><h4 class="mt-4">6. 흔한 실수</h4><ul><li>이스케이프(<code>\.</code>)를 빼먹고 아무 문자나 매칭되는 경우</li><li>한글·유니코드를 <code>\w</code>로 다 된다고 착각하는 경우</li></ul>
 <div class="d-flex justify-content-between mt-5"><a class="btn btn-secondary" href="misc-l04-01.html">← Wireshark 패킷 분석</a><a class="btn btn-primary" href="misc-l07-01.html">pwntools 입문 →</a></div></main>
 </div></div>
 <footer class="bg-dark text-white text-center py-3"><small>보안 수업자료 · 교육용 (실습은 허가된 환경에서만)</small></footer>

@@ -10,6 +10,26 @@
 <main class="col-lg-9 col-md-8 p-4"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">목차</a></li>
 <li class="breadcrumb-item active">🧩 Misc</li></ol></nav>
 <h1>🧩 Misc</h1><p class="lead">CTF의 잡학백과. 파이썬·OSINT·도구 활용.</p>
+<h3 class="mt-4">분야 아키텍처: 잡학이 무기가 되는 순서</h3><p>Misc는 <strong>환경→자동화→정보수집→분석→기록·협업</strong>의 순서로 쌓입니다. 파이썬으로 손을 늘리고, OSINT로 눈을 넓히고, Write-up과 팀 전략으로 마무리합니다.</p>
+<div class="mermaid">flowchart TD
+  E["CTF 입문·환경<br/>룰·플랫폼·VM"] --> P["파이썬 기초·자동화<br/>스크립팅·pwntools"]
+  P --> O["OSINT<br/>공개정보 수집"]
+  O --> A["패킷·정규식 분석<br/>Wireshark·regex"]
+  A --> W["Write-up<br/>기록"]
+  W --> T["팀 전략·종합<br/>협업"]</div>
+<p class="text-muted small">읽는 법: 위에서 아래로가 성장 순서입니다. 자동화(P)가 빠르면 뒤 모든 장의 속도가 올라갑니다.</p>
+<h3 class="mt-4">학습 로드맵</h3><p>입문과 환경부터 시작해 파이썬·OSINT·도구를 거쳐 기록과 팀 전략으로 마무리합니다.</p>
+<div class="mermaid">flowchart LR
+  M0["L0 CTF 입문"] --> M1["L1 파이썬 기초"]
+  M1 --> M2["L2 자동화 스크립팅"]
+  M2 --> M3["L3 OSINT"]
+  M3 --> M4["L4 Wireshark"]
+  M4 --> M5["L5 정규식"]
+  M5 --> M7["L7 pwntools"]
+  M7 --> M8["L8 Write-up"]
+  M8 --> M9["L9 팀 전략"]
+  M9 --> M10["L10 종합 프로젝트"]</div>
+<p class="text-muted small">읽는 법: 왼쪽부터 순서대로 학습하세요. L2 자동화는 뒤 전 장의 가속 페달입니다.</p>
 <p><span class="badge text-bg-dark">총 10장</span> <span class="badge text-bg-light text-dark border">Level = 막(難易度) · 장 = 기술</span></p>
 <h4 class="mt-4"><span class="badge text-bg-secondary">Level 0</span></h4><div class="row g-3"><div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
 <h6 class="card-title">CTF 입문과 환경구축</h6><p class="card-text small text-muted">CTF 방식과 실습 환경을 갖춘다.</p>
